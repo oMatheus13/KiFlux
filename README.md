@@ -24,7 +24,18 @@ Traditionally, designers waste hours creating symbols, drawing footprints, and l
 
 ---
 
-## 🧬 2. System Architecture
+## 🚀 2. Installation & Setup
+
+KiFlux is a lightweight, open-source Python tool. To install it directly from this GitHub repository along with all its dependencies, run:
+
+```bash
+pip install git+https://github.com/oMatheus13/KiFlux.git
+```
+*(Note: Make sure you have **Python 3.8+** installed on your system. This command will register the global `kiflux` executable in your terminal path automatically.)*
+
+---
+
+## 🧬 3. System Architecture
 
 The data flow of **KiFlux** is designed to keep your local libraries safe, clean, and free of duplicate files.
 
@@ -42,22 +53,22 @@ graph TD
     IR --> G
     H -- "S (Yes/Enter)" --> J["Write Triad & Internal Links"]
     J --> K["Save: symbols/Name.kicad_sym"]
-    J --> L["Save: Maker.pretty/Name.kicad_mod"]
+    J --> L["Save: KiFlux.pretty/Name.kicad_mod"]
     J --> M["Save: 3d/Name.wrl & .step"]
-    K --> N["Rebuild Consolidated Maker.kicad_sym"]
+    K --> N["Rebuild Consolidated KiFlux.kicad_sym"]
     N --> O["Instant Live Update in KiCad 10"]
 ```
 
 ---
 
-## 📦 3. Naming Conventions
+## 📦 4. Naming Conventions
 
 All imported components are automatically renamed using *snake_case* based on the physical parameters and official LCSC category, cleaning up messy manufacturer suffixes.
 
 ### A. Passive Components
 Structure: `PREFIX_PACKAGE_VALUE_MANUFACTURER`
 *   **Capacitors (`C_`):** `C_0805_100n_SAMSUNG`, `C_0402_10u_YAGEO`
-*   **Resistors (`R_`):** `R_0603_10k_UNIROYAL`, `R_0805_0r1_UNIROYAL`
+*   **Resistores (`R_`):** `R_0603_10k_UNIROYAL`, `R_0805_0r1_UNIROYAL`
 
 > [!NOTE]  
 > Passive component identification uses strict regex matching (e.g. `^\d+(\.\d+)?(p|n|u|m)?F?$`) to prevent RF transceivers (like `nRF24L01`) or voltage regulators that contain letters **F** or **R** in their value from being miscategorized.
@@ -67,16 +78,22 @@ Structure: `CATEGORY_MODEL_PACKAGE_MANUFACTURER`
 *   **Microcontrollers (`MCU_`):** `MCU_RP2040_QFN56_RPI`, `MCU_RP2350B_QFN80_RPI`, `MCU_ESP32_S3_QFN56_ESPRESSIF`
 *   **Regulators (`REG_`):** `REG_AMS1117_3_3_SOT223_AMS`, `REG_LM7805_TO220_TI`
 *   **Diodes & Zeners (`DIODE_`):** `DIODE_1N4148_SOD323_CJ`
-*   **Transistors & MOSFETs (`TRANS_`):** `TRANS_2N7002_SOT23_NXP`
+*   **Transistores & MOSFETs (`TRANS_`):** `TRANS_2N7002_SOT23_NXP`
 *   **General ICs (`IC_`):** `IC_CH340G_SOIC16_WCH`, `IC_NRF24L01P-R_QFN20_NORDIC`
 
 ---
 
-## 💻 4. CLI Quickstart Guide
+## 💻 5. CLI Quickstart Guide
 
 Manage your KiCad libraries directly from your terminal using the `kiflux` CLI tool.
 
-### 📥 Component Importing & Management
+### 📥 Initialization & Component Management
+
+*   **Interactive Guided Setup Helper:**
+    ```bash
+    kiflux init
+    ```
+    *Starts the setup wizard in your terminal. It asks where you want to store your library (defaults to `~/KiCad/KiFlux`) and configures KiCad globally for you. If you run any import command without running this first, KiFlux will automatically ask to initialize.*
 
 *   **Standard Import (Suggested Naming):**
     ```bash
@@ -160,15 +177,15 @@ Manage your KiCad libraries directly from your terminal using the `kiflux` CLI t
 
 ---
 
-## 🛠️ 5. Physical Library Structure
+## 🛠️ 6. Physical Library Structure
 
-Your library directory is structured as follows:
+Your library directory is structured as follows (assuming `KiFlux` as the chosen name):
 
 ```text
-Maker/
+KiFlux/
 ├── config.json                     # Local preferences and paths
-├── Maker.kicad_sym                 # Consolidated library file read by KiCad
-├── Maker.pretty/                   # KiCad native footprints folder
+├── KiFlux.kicad_sym                # Consolidated library file read by KiCad
+├── KiFlux.pretty/                  # KiCad native footprints folder
 │   ├── MCU_RP2040_QFN56_RPI.kicad_mod
 │   └── IC_CH340G_SOIC16_WCH.kicad_mod
 ├── symbols/                        # Individual symbols (Git-friendly)
@@ -183,10 +200,16 @@ Maker/
 
 ---
 
-## ❓ 6. FAQ
+## 📄 7. License
+
+This project is open-source and licensed under the **MIT License**. Feel free to use, modify, and distribute it! See the [LICENSE](LICENSE) file for details.
+
+---
+
+## ❓ 8. FAQ
 
 ### 1. Can I use Git version control on this library?
-**Yes, absolutely!** KiFlux was designed with Git in mind. Símbols are saved individually in `symbols/`, and the main file `Maker.kicad_sym` is rebuilt automatically. You can commit the `symbols/`, `Maker.pretty/` and `3d/` folders. It is recommended to add `Maker.kicad_sym` to your `.gitignore` and run `kiflux --rebuild` after cloning.
+**Yes, absolutely!** KiFlux was designed with Git in mind. Symbols are saved individually in `symbols/`, and the main file `KiFlux.kicad_sym` is rebuilt automatically. You can commit the `symbols/`, `KiFlux.pretty/` and `3d/` folders. It is recommended to add `KiFlux.kicad_sym` to your `.gitignore` and run `kiflux --rebuild` after cloning.
 
 ### 2. What happens if I update my KiCad version?
 Nothing breaks. KiFlux uses the standard KiCad S-expression syntax (version 20231120+), which is highly forward-compatible. You only need to run `kiflux directory /path/to/library` if you change your PC or KiCad global paths.

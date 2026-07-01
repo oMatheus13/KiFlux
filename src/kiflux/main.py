@@ -7,13 +7,23 @@ import subprocess
 import argparse
 import json
 import csv
+import tempfile
 
 # Configurações de caminhos e arquivo de configuração
 CONFIG_DIR = os.path.expanduser("~/.config/kiflux")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 OLD_CONFIG_DIR = os.path.expanduser("~/.config/maker")
 OLD_CONFIG_FILE = os.path.join(OLD_CONFIG_DIR, "config.json")
-DEFAULT_LIB_ROOT = "/media/omatheus/oMatheusDisk2/KiCad/Maker"
+DEFAULT_LIB_ROOT = os.path.expanduser("~/KiCad/KiFlux")
+TEMP_DIR = os.path.join(tempfile.gettempdir(), "easyeda_import_temp")
+
+# Variáveis globais de caminhos (serão carregadas dinamicamente)
+LIB_ROOT = ""
+LIB_NAME = ""
+SYM_LIB_FILE = ""
+SYM_INDIVIDUAL_DIR = ""
+FP_DIR = ""
+DIR_3D = ""
 
 def load_config():
     # Tenta carregar o config do KiFlux
@@ -42,43 +52,111 @@ def save_config(lib_root):
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump({"lib_root": lib_root}, f, indent=4)
     except Exception as e:
-        print(f"[!] Erro ao salvar configuração: {e}")
+        print(f"[!] Error saving configuration: {e}")
 
-LIB_ROOT = load_config()
-SYM_LIB_FILE = os.path.join(LIB_ROOT, "Maker.kicad_sym")
-SYM_INDIVIDUAL_DIR = os.path.join(LIB_ROOT, "symbols")
-FP_DIR = os.path.join(LIB_ROOT, "Maker.pretty")
-DIR_3D = os.path.join(LIB_ROOT, "3d")
-TEMP_DIR = "/tmp/easyeda_import_temp"
+def update_paths(lib_root):
+    global LIB_ROOT, LIB_NAME, SYM_LIB_FILE, SYM_INDIVIDUAL_DIR, FP_DIR, DIR_3D
+    LIB_ROOT = lib_root
+    LIB_NAME = os.path.basename(lib_root.rstrip("/"))
+    if not LIB_NAME:
+        LIB_NAME = "KiFlux"
+    SYM_LIB_FILE = os.path.join(LIB_ROOT, f"{LIB_NAME}.kicad_sym")
+    SYM_INDIVIDUAL_DIR = os.path.join(LIB_ROOT, "symbols")
+    FP_DIR = os.path.join(LIB_ROOT, f"{LIB_NAME}.pretty")
+    DIR_3D = os.path.join(LIB_ROOT, "3d")
+
+def init_kiflux(force=False):
+    # Se já estiver configurado e não for um comando explícito de re-init, apenas retorna True
+    if os.path.exists(CONFIG_FILE) and not force:
+        update_paths(load_config())
+        return True
+        
+    print("\n=== KiFlux Interactive Onboarding Helper ===")
+    print("This wizard will help you set up your KiCad component library directory.\n")
+    
+    default_path = os.path.expanduser("~/KiCad/KiFlux")
+    print(f"Press [Enter] to accept the default path, or type a custom absolute path.")
+    user_path = input(f"Library directory [{default_path}]: ").strip()
+    
+    if not user_path:
+        lib_path = default_path
+    else:
+        lib_path = os.path.abspath(os.path.expanduser(user_path))
+        
+    print(f"\n[*] Creating library structure in: {lib_path}")
+    
+    # Cria as pastas
+    os.makedirs(lib_path, exist_ok=True)
+    os.makedirs(os.path.join(lib_path, "symbols"), exist_ok=True)
+    lib_name = os.path.basename(lib_path.rstrip("/"))
+    if not lib_name:
+        lib_name = "KiFlux"
+    os.makedirs(os.path.join(lib_path, f"{lib_name}.pretty"), exist_ok=True)
+    os.makedirs(os.path.join(lib_path, "3d"), exist_ok=True)
+    
+    save_config(lib_path)
+    update_paths(lib_path)
+    
+    # Pergunta sobre a configuração global do KiCad
+    confirm_kicad = input("\nDo you want to automatically register this library in KiCad's global tables? [S(yes) / n(no)]: ").strip().lower()
+    if confirm_kicad in ['', 's', 'yes']:
+        set_library_path(lib_path)
+        
+    print("\n[+] KiFlux configured successfully! You can now import components.")
+    return True
+
+def ensure_config_exists():
+    if not os.path.exists(CONFIG_FILE) and not os.path.exists(OLD_CONFIG_FILE):
+        print("[!] KiFlux has not been initialized yet.")
+        choice = input("Do you want to run the guided setup wizard now? [S(yes) / n(no)]: ").strip().lower()
+        if choice in ['', 's', 'yes']:
+            init_kiflux()
+        else:
+            # Inicializa silencioso com o padrão
+            lib_path = DEFAULT_LIB_ROOT
+            print(f"[*] Silently initializing with default path: {lib_path}")
+            os.makedirs(lib_path, exist_ok=True)
+            os.makedirs(os.path.join(lib_path, "symbols"), exist_ok=True)
+            lib_name = "KiFlux"
+            os.makedirs(os.path.join(lib_path, f"{lib_name}.pretty"), exist_ok=True)
+            os.makedirs(os.path.join(lib_path, "3d"), exist_ok=True)
+            save_config(lib_path)
+            update_paths(lib_path)
+            print("[~] Tip: You can run 'kiflux init' at any time to reconfigure and register in KiCad.")
+    else:
+        update_paths(load_config())
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="KiFlux: Gerenciador inteligente de componentes e gerador de BOM/CPL para KiCad.")
+    parser = argparse.ArgumentParser(description="KiFlux: Smart component manager and BOM/CPL exporter for KiCad.")
     
     # Grupo de Importação
-    parser.add_argument("--lcsc", help="Part Number da LCSC/JLCPCB (ex: C2040) para importar um novo componente.")
-    parser.add_argument("--name", help="Nome personalizado do componente a ser importado. Se omitido, usa o nome gerado automaticamente.")
+    parser.add_argument("--lcsc", help="LCSC/JLCPCB Part Number (e.g. C2040) to import a new component.")
+    parser.add_argument("--name", help="Custom name for the component to be imported. If omitted, uses the automatically generated name.")
     
     # Ações Especiais
-    parser.add_argument("--remove", help="Nome do componente ou código LCSC (ex: C2040) a ser removido.")
-    parser.add_argument("--rename-from", help="Nome do componente atual ou código LCSC (ex: C2040) que deseja renomear.")
-    parser.add_argument("--rename-to", help="Novo nome do componente (requer --rename-from).")
-    parser.add_argument("--rename", help="Nome do componente ou código LCSC (ex: C2040) a ser renomeado automaticamente com base nos metadados da LCSC.")
+    parser.add_argument("--remove", help="Component name or LCSC code (e.g. C2040) to be removed.")
+    parser.add_argument("--rename-from", help="Current component name or LCSC code (e.g. C2040) to be renamed.")
+    parser.add_argument("--rename-to", help="New name for the component (requires --rename-from).")
+    parser.add_argument("--rename", help="Component name or LCSC code (e.g. C2040) to be automatically renamed based on LCSC metadata.")
     
-    parser.add_argument("--rebuild", action="store_true", help="Apenas reconstrói a biblioteca consolidada Maker.kicad_sym a partir dos arquivos individuais.")
+    parser.add_argument("--rebuild", action="store_true", help="Rebuilds the consolidated library file from individual symbols.")
     
     # Consultas e Administração
-    parser.add_argument("--list", action="store_true", help="Lista todos os componentes cadastrados no inventário da biblioteca.")
-    parser.add_argument("--info", help="Exibe informações completas de um componente ou código LCSC (ex: C2040).")
-    parser.add_argument("--datasheet", help="Abre o link do datasheet do componente ou código LCSC (ex: C2040) no navegador.")
-    parser.add_argument("--check", action="store_true", help="Executa auditoria de integridade da biblioteca.")
-    parser.add_argument("--set-path", help="Altera o diretório raiz da biblioteca Maker e reconfigura o KiCad globalmente.")
+    parser.add_argument("--list", action="store_true", help="List all registered components in the library inventory.")
+    parser.add_argument("--info", help="Display complete details for a component or LCSC code.")
+    parser.add_argument("--datasheet", help="Open the official component datasheet PDF in your default browser.")
+    parser.add_argument("--check", action="store_true", help="Run library integrity audit.")
+    parser.add_argument("--set-path", help="Change the library root directory and reconfigure KiCad globally.")
+    
+    # Inicialização
+    parser.add_argument("--init", action="store_true", help="Run the guided interactive setup helper for KiFlux.")
     
     # Exportação de BOM e CPL
-    parser.add_argument("--bom", nargs="?", const=".", help="Gera o arquivo BOM e CPL para a JLCPCB a partir do projeto informado (diretório padrão: atual).")
-    parser.add_argument("--bom-output", help="Diretório de destino para salvar os arquivos CSV gerados pela exportação de BOM/CPL.")
+    parser.add_argument("--bom", nargs="?", const=".", help="Generate BOM and CPL files for the project in the specified path (defaults to current folder).")
+    parser.add_argument("--bom-output", help="Target directory to save the generated BOM/CPL CSV files.")
     
     # Argumentos posicionais para compatibilidade de uso rápido (kiflux C2040 [NOME])
-    parser.add_argument("positional_args", nargs="*", help="Uso rápido: kiflux <LCSC_ID> [NOME_PERSONALIZADO]")
+    parser.add_argument("positional_args", nargs="*", help="Quickstart: kiflux <LCSC_ID> [CUSTOM_NAME]")
     
     return parser.parse_args()
 
@@ -93,6 +171,7 @@ def run_easyeda2kicad(lcsc):
         shutil.rmtree(TEMP_DIR)
     os.makedirs(TEMP_DIR, exist_ok=True)
     
+    # A ferramenta easyeda2kicad gera o arquivo consolidado temporário usando o nome fixo Maker
     cmd = [
         "easyeda2kicad",
         "--lcsc_id", lcsc,
@@ -103,10 +182,10 @@ def run_easyeda2kicad(lcsc):
         "--overwrite"
     ]
     
-    print(f"[*] Executando: {' '.join(cmd)}")
+    print(f"[*] Executing: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print("[!] Erro ao executar easyeda2kicad:")
+        print("[!] Error executing easyeda2kicad:")
         print(result.stderr)
         sys.exit(1)
     
@@ -187,7 +266,7 @@ def extract_all_symbol_blocks(content):
 def process_symbol(lcsc, final_name):
     temp_sym_path = os.path.join(TEMP_DIR, "Maker.kicad_sym")
     if not os.path.exists(temp_sym_path):
-        print("[!] Arquivo de símbolo temporário não foi gerado.")
+        print("[!] Temporary symbol file was not generated.")
         sys.exit(1)
         
     with open(temp_sym_path, "r", encoding="utf-8") as f:
@@ -195,13 +274,13 @@ def process_symbol(lcsc, final_name):
         
     match = re.search(r'\(symbol "([^"]+)"', content)
     if not match:
-        print("[!] Não foi possível encontrar a definição do símbolo no arquivo temporário.")
+        print("[!] Could not find symbol definition in temporary file.")
         sys.exit(1)
         
     orig_name = match.group(1)
     comp_name = clean_name(final_name)
     
-    print(f"[*] Símbolo original: {orig_name} -> Nome final: {comp_name}")
+    print(f"[*] Original Symbol: {orig_name} -> Final Name: {comp_name}")
     
     content = content.replace(f'(symbol "{orig_name}"', f'(symbol "{comp_name}"')
     content = re.sub(r'\(symbol "' + re.escape(orig_name) + r'(_\d+_\d+)"', r'(symbol "' + comp_name + r'\1"', content)
@@ -215,7 +294,7 @@ def process_symbol(lcsc, final_name):
     
     content = re.sub(
         r'(\(property\s+"Footprint"\s+)"[^"]+"',
-        f'\\1"Maker:{comp_name}"',
+        f'\\1"{LIB_NAME}:{comp_name}"',
         content
     )
     
@@ -243,7 +322,7 @@ def process_symbol(lcsc, final_name):
     
     symbol_block = extract_symbol_block(content, comp_name)
     if not symbol_block:
-        print("[!] Erro ao extrair o bloco do símbolo após modificação.")
+        print("[!] Error extracting symbol block after modification.")
         sys.exit(1)
         
     os.makedirs(SYM_INDIVIDUAL_DIR, exist_ok=True)
@@ -260,11 +339,11 @@ def process_symbol(lcsc, final_name):
     with open(individual_sym_file, "w", encoding="utf-8") as f:
         f.write(individual_content)
         
-    print(f"[+] Símbolo individual salvo em: symbols/{comp_name}.kicad_sym")
+    print(f"[+] Individual symbol saved to: symbols/{comp_name}.kicad_sym")
     return comp_name, orig_name
 
 def rebuild_consolidated_library():
-    print("[*] Reconstruindo biblioteca consolidada Maker.kicad_sym...")
+    print(f"[*] Rebuilding consolidated library {LIB_NAME}.kicad_sym...")
     if not os.path.exists(SYM_INDIVIDUAL_DIR):
         os.makedirs(SYM_INDIVIDUAL_DIR, exist_ok=True)
         
@@ -292,17 +371,17 @@ def rebuild_consolidated_library():
     with open(SYM_LIB_FILE, "w", encoding="utf-8") as f:
         f.write(consolidated_content)
         
-    print(f"[+] Biblioteca consolidada reconstruída com {len(files)} componente(s)!")
+    print(f"[+] Consolidated library rebuilt with {len(files)} component(s)!")
 
 def process_footprint(lcsc, comp_name, orig_name):
     temp_fp_dir = os.path.join(TEMP_DIR, "Maker.pretty")
     if not os.path.exists(temp_fp_dir):
-        print("[!] Pasta de footprints temporária não existe.")
+        print("[!] Temporary footprint directory does not exist.")
         sys.exit(1)
         
     files = [f for f in os.listdir(temp_fp_dir) if f.endswith(".kicad_mod")]
     if not files:
-        print("[!] Nenhum arquivo .kicad_mod gerado.")
+        print("[!] No .kicad_mod footprint file was generated.")
         sys.exit(1)
         
     temp_mod_file = os.path.join(temp_fp_dir, files[0])
@@ -359,13 +438,13 @@ def process_footprint(lcsc, comp_name, orig_name):
     with open(target_mod_file, "w", encoding="utf-8") as f:
         f.write(content)
         
-    print(f"[+] Footprint '{comp_name}' salvo com sucesso em Maker.pretty!")
+    print(f"[+] Footprint '{comp_name}' successfully saved to {LIB_NAME}.pretty!")
     return orig_fp_name
 
 def process_3d(comp_name, orig_fp_name):
     temp_3d_dir = os.path.join(TEMP_DIR, "Maker.3dshapes")
     if not os.path.exists(temp_3d_dir):
-        print("[*] Nenhum modelo 3D foi gerado pelo easyeda2kicad.")
+        print("[*] No 3D model files were generated by easyeda2kicad.")
         return
         
     os.makedirs(DIR_3D, exist_ok=True)
@@ -375,11 +454,11 @@ def process_3d(comp_name, orig_fp_name):
     
     if os.path.exists(wrl_src):
         shutil.copy(wrl_src, os.path.join(DIR_3D, f"{comp_name}.wrl"))
-        print(f"[+] Modelo 3D WRL '{comp_name}.wrl' salvo em Maker/3d/")
+        print(f"[+] WRL 3D Model '{comp_name}.wrl' saved in 3d folder.")
         
     if os.path.exists(step_src):
         shutil.copy(step_src, os.path.join(DIR_3D, f"{comp_name}.step"))
-        print(f"[+] Modelo 3D STEP '{comp_name}.step' salvo em Maker/3d/")
+        print(f"[+] STEP 3D Model '{comp_name}.step' saved in 3d folder.")
 
 def find_name_by_lcsc(lcsc_id):
     lcsc_id = lcsc_id.upper().strip()
@@ -394,7 +473,7 @@ def find_name_by_lcsc(lcsc_id):
                 if re.search(r'\(property\s+"(?:LCSC Part|JLCPCB Part #)"\s+"' + re.escape(lcsc_id) + r'"', content):
                     return filename.replace(".kicad_sym", "")
             except Exception as e:
-                print(f"[!] Erro ao ler {filename}: {e}")
+                print(f"[!] Error reading {filename}: {e}")
     return None
 
 def generate_standardized_name(value, manufacturer, package, temp_sym_content=None):
@@ -475,7 +554,6 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
         return f"R_{pkg}_{val}_{mfr}"
 
     category = "IC"
-    # Fallback seguro para CIs de microcontroladores conhecidos
     mcu_prefixes = [
         "RP2", "ESP32", "ESP8266", "ESP_C", "ESP_S", "STM32", "GD32", "ATMEGA", "ATTINY", 
         "NRF5", "SAMD", "LPC1", "LPC8", "LPC5", "MK2", "MKL", "MSP430", "TMS320", "PIC1", "CH5"
@@ -495,12 +573,12 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
 
 def import_single_component(lcsc, custom_name=None):
     lcsc = lcsc.upper().strip()
-    print(f"\n=== Iniciando importação do componente {lcsc} ===")
+    print(f"\n=== Starting component import: {lcsc} ===")
     run_easyeda2kicad(lcsc)
     value, manufacturer, package = extract_properties_from_temp()
     
     if not value:
-        print(f"[!] Erro: Não foi possível obter os metadados da LCSC para o código {lcsc}.")
+        print(f"[!] Error: Could not retrieve LCSC metadata for code {lcsc}.")
         return False
         
     temp_sym_path = os.path.join(TEMP_DIR, "Maker.kicad_sym")
@@ -511,36 +589,36 @@ def import_single_component(lcsc, custom_name=None):
             
     final_name = custom_name if custom_name else generate_standardized_name(value, manufacturer, package, temp_sym_content)
     if not final_name:
-        print("[!] Erro: Nome do componente ficou em branco.")
+        print("[!] Error: Component name generated is blank.")
         return False
         
-    print(f"\n[+] Componente identificado na LCSC:")
-    print(f"    Código LCSC:    {lcsc}")
-    print(f"    Valor original: {value}")
-    print(f"    Fabricante:     {manufacturer}")
-    print(f"    Encapsulamento: {package}")
-    print(f"    Nome sugerido:  {final_name}")
+    print(f"\n[+] Component identified on LCSC:")
+    print(f"    LCSC Part:      {lcsc}")
+    print(f"    Original Value: {value}")
+    print(f"    Manufacturer:   {manufacturer}")
+    print(f"    Package:        {package}")
+    print(f"    Suggested Name: {final_name}")
     
-    confirm = input(f"\nDeseja confirmar a importação do componente como '{final_name}'? [S(sim) / n(não) / r(digitar nome personalizado)]: ").strip()
+    confirm = input(f"\nDo you want to confirm the import of this component as '{final_name}'? [S(yes) / n(no) / r(type custom name)]: ").strip()
     confirm_lower = confirm.lower()
     
     if confirm_lower.startswith('r'):
         parts = confirm.split(maxsplit=1)
         if len(parts) > 1:
             final_name = clean_name(parts[1])
-            print(f"[*] Prosseguindo com o nome personalizado: '{final_name}'")
+            print(f"[*] Proceeding with custom name: '{final_name}'")
         else:
-            custom_input = input("Digite o nome personalizado desejado: ").strip()
+            custom_input = input("Enter custom name: ").strip()
             if not custom_input:
-                print("[!] Nome inválido. Cancelando importação.")
+                print("[!] Invalid name. Aborting import.")
                 if os.path.exists(TEMP_DIR):
                     shutil.rmtree(TEMP_DIR)
                 return False
             final_name = clean_name(custom_input)
-            print(f"[*] Prosseguindo com o nome personalizado: '{final_name}'")
+            print(f"[*] Proceeding with custom name: '{final_name}'")
             
-    elif confirm_lower not in ['', 's', 'sim']:
-        print(f"[!] Importação de {lcsc} cancelada pelo usuário.")
+    elif confirm_lower not in ['', 's', 'yes']:
+        print(f"[!] Import of {lcsc} canceled by user.")
         if os.path.exists(TEMP_DIR):
             shutil.rmtree(TEMP_DIR)
         return False
@@ -553,49 +631,49 @@ def import_single_component(lcsc, custom_name=None):
     if os.path.exists(TEMP_DIR):
         shutil.rmtree(TEMP_DIR)
         
-    print(f"=== Importação concluída com sucesso! Componente: {comp_name} ===")
+    print(f"=== Import completed successfully! Component: {comp_name} ===")
     return True
 
 def remove_component(comp_name):
     comp_name = clean_name(comp_name)
-    print(f"[*] Removendo componente '{comp_name}'...")
+    print(f"[*] Removing component '{comp_name}'...")
     
     sym_path = os.path.join(SYM_INDIVIDUAL_DIR, f"{comp_name}.kicad_sym")
     if os.path.exists(sym_path):
         os.remove(sym_path)
-        print(f"  [-] Símbolo individual removido: symbols/{comp_name}.kicad_sym")
+        print(f"  [-] Individual symbol removed: symbols/{comp_name}.kicad_sym")
     else:
-        print(f"  [!] Símbolo individual não encontrado em: symbols/{comp_name}.kicad_sym")
+        print(f"  [!] Symbol not found at symbols/{comp_name}.kicad_sym")
         
     fp_path = os.path.join(FP_DIR, f"{comp_name}.kicad_mod")
     if os.path.exists(fp_path):
         os.remove(fp_path)
-        print(f"  [-] Footprint removido: Maker.pretty/{comp_name}.kicad_mod")
+        print(f"  [-] Footprint removed: {LIB_NAME}.pretty/{comp_name}.kicad_mod")
     else:
-        print(f"  [!] Footprint não encontrado em: Maker.pretty/{comp_name}.kicad_mod")
+        print(f"  [!] Footprint not found at {LIB_NAME}.pretty/{comp_name}.kicad_mod")
         
     wrl_path = os.path.join(DIR_3D, f"{comp_name}.wrl")
     step_path = os.path.join(DIR_3D, f"{comp_name}.step")
     
     if os.path.exists(wrl_path):
         os.remove(wrl_path)
-        print(f"  [-] Modelo 3D WRL removido: 3d/{comp_name}.wrl")
+        print(f"  [-] 3D WRL model removed: 3d/{comp_name}.wrl")
     if os.path.exists(step_path):
         os.remove(step_path)
-        print(f"  [-] Modelo 3D STEP removido: 3d/{comp_name}.step")
+        print(f"  [-] 3D STEP model removed: 3d/{comp_name}.step")
         
     rebuild_consolidated_library()
-    print(f"[+] Componente '{comp_name}' removido com sucesso!")
+    print(f"[+] Component '{comp_name}' removed successfully!")
 
 def rename_component(old_name, new_name):
     old_name = clean_name(old_name)
     new_name = clean_name(new_name)
     
     if old_name == new_name:
-        print("[!] Erro: O nome antigo e o novo são idênticos.")
+        print("[!] Error: Old name and new name are identical.")
         sys.exit(1)
         
-    print(f"[*] Renomeando componente de '{old_name}' para '{new_name}'...")
+    print(f"[*] Renaming component from '{old_name}' to '{new_name}'...")
     
     old_sym_path = os.path.join(SYM_INDIVIDUAL_DIR, f"{old_name}.kicad_sym")
     new_sym_path = os.path.join(SYM_INDIVIDUAL_DIR, f"{new_name}.kicad_sym")
@@ -616,7 +694,7 @@ def rename_component(old_name, new_name):
         
         content = re.sub(
             r'(\(property\s+"Footprint"\s+)"[^"]+"',
-            f'\\1"Maker:{new_name}"',
+            f'\\1"{LIB_NAME}:{new_name}"',
             content
         )
         
@@ -624,9 +702,9 @@ def rename_component(old_name, new_name):
             f.write(content)
             
         os.remove(old_sym_path)
-        print(f"  [~] Símbolo individual atualizado: symbols/{new_name}.kicad_sym")
+        print(f"  [~] Individual symbol updated: symbols/{new_name}.kicad_sym")
     else:
-        print(f"  [!] Símbolo antigo não encontrado em: symbols/{old_name}.kicad_sym (pulando)")
+        print(f"  [!] Symbol not found at symbols/{old_name}.kicad_sym (skipping)")
         
     old_fp_path = os.path.join(FP_DIR, f"{old_name}.kicad_mod")
     new_fp_path = os.path.join(FP_DIR, f"{new_name}.kicad_mod")
@@ -655,9 +733,9 @@ def rename_component(old_name, new_name):
             f.write(content)
             
         os.remove(old_fp_path)
-        print(f"  [~] Footprint atualizado: Maker.pretty/{new_name}.kicad_mod")
+        print(f"  [~] Footprint updated: {LIB_NAME}.pretty/{new_name}.kicad_mod")
     else:
-        print(f"  [!] Footprint antigo não encontrado em: Maker.pretty/{old_name}.kicad_mod (pulando)")
+        print(f"  [!] Footprint not found at {LIB_NAME}.pretty/{old_name}.kicad_mod (skipping)")
         
     old_wrl_path = os.path.join(DIR_3D, f"{old_name}.wrl")
     new_wrl_path = os.path.join(DIR_3D, f"{new_name}.wrl")
@@ -666,27 +744,27 @@ def rename_component(old_name, new_name):
     
     if os.path.exists(old_wrl_path):
         os.rename(old_wrl_path, new_wrl_path)
-        print(f"  [~] Modelo 3D WRL renomeado para: 3d/{new_name}.wrl")
+        print(f"  [~] 3D WRL model renamed to: 3d/{new_name}.wrl")
         
     if os.path.exists(old_step_path):
         os.rename(old_step_path, new_step_path)
-        print(f"  [~] Modelo 3D STEP renomeado para: 3d/{new_name}.step")
+        print(f"  [~] 3D STEP model renamed to: 3d/{new_name}.step")
         
     rebuild_consolidated_library()
-    print(f"[+] Componente renomeado de '{old_name}' para '{new_name}' com sucesso!")
+    print(f"[+] Component renamed from '{old_name}' to '{new_name}' successfully!")
 
 def list_components():
-    print(f"\n=== Inventário da Biblioteca Maker ===\nDiretório: {LIB_ROOT}\n")
+    print(f"\n=== KiFlux Library Inventory ===\nDirectory: {LIB_ROOT}\n")
     if not os.path.exists(SYM_INDIVIDUAL_DIR):
-        print("Nenhum componente cadastrado ainda.")
+        print("No components registered yet.")
         return
         
     files = sorted([f for f in os.listdir(SYM_INDIVIDUAL_DIR) if f.endswith(".kicad_sym")])
     if not files:
-        print("Nenhum componente cadastrado ainda.")
+        print("No components registered yet.")
         return
         
-    print(f"{'Nome do Componente':<35} | {'LCSC':<8} | {'Fabricante':<25} | {'3D'}")
+    print(f"{'Component Name':<35} | {'LCSC':<8} | {'Manufacturer':<25} | {'3D'}")
     print("-" * 85)
     
     for filename in files:
@@ -708,24 +786,24 @@ def list_components():
         except Exception:
             pass
             
-        has_3d = "[✓] wrl/step" if (os.path.exists(os.path.join(DIR_3D, f"{comp_name}.wrl")) or os.path.exists(os.path.join(DIR_3D, f"{comp_name}.step"))) else "[x] Ausente"
+        has_3d = "[✓] wrl/step" if (os.path.exists(os.path.join(DIR_3D, f"{comp_name}.wrl")) or os.path.exists(os.path.join(DIR_3D, f"{comp_name}.step"))) else "[x] Missing"
         print(f"{comp_name:<35} | {lcsc:<8} | {mfr:<25} | {has_3d}")
-    print(f"\nTotal: {len(files)} componente(s)\n")
+    print(f"\nTotal: {len(files)} component(s)\n")
 
 def show_info(target):
     if re.match(r'^C\d+$', target.upper().strip()):
         resolved = find_name_by_lcsc(target)
         if not resolved:
-            print(f"[!] Erro: Nenhum componente encontrado com o código LCSC '{target}'")
+            print(f"[!] Error: No component found with LCSC code '{target}'")
             return
         target = resolved
         
     sym_path = os.path.join(SYM_INDIVIDUAL_DIR, f"{target}.kicad_sym")
     if not os.path.exists(sym_path):
-        print(f"[!] Erro: Componente '{target}' não cadastrado na biblioteca.")
+        print(f"[!] Error: Component '{target}' is not registered in the library.")
         return
         
-    print(f"\n=== Detalhes do Componente: {target} ===")
+    print(f"\n=== Component Details: {target} ===")
     
     lcsc = "N/A"
     mfr = "N/A"
@@ -749,33 +827,33 @@ def show_info(target):
         if ds_match: datasheet = ds_match.group(1)
         if fp_match: fp_ref = fp_match.group(1)
     except Exception as e:
-        print(f"[!] Erro ao ler metadados: {e}")
+        print(f"[!] Error reading metadata: {e}")
         
-    has_wrl = "Sim" if os.path.exists(os.path.join(DIR_3D, f"{target}.wrl")) else "Não"
-    has_step = "Sim" if os.path.exists(os.path.join(DIR_3D, f"{target}.step")) else "Não"
+    has_wrl = "Yes" if os.path.exists(os.path.join(DIR_3D, f"{target}.wrl")) else "No"
+    has_step = "Yes" if os.path.exists(os.path.join(DIR_3D, f"{target}.step")) else "No"
     
-    print(f"Código LCSC/JLCPCB:  {lcsc}")
-    print(f"Fabricante:          {mfr}")
+    print(f"LCSC/JLCPCB Code:    {lcsc}")
+    print(f"Manufacturer:        {mfr}")
     print(f"Part Number (MPN):   {mpn}")
-    print(f"Vínculo Footprint:   {fp_ref}")
-    print(f"Modelo 3D WRL:       {has_wrl}")
-    print(f"Modelo 3D STEP:      {has_step}")
+    print(f"Footprint Link:      {fp_ref}")
+    print(f"3D WRL Model:        {has_wrl}")
+    print(f"3D STEP Model:       {has_step}")
     print(f"Datasheet:           {datasheet}")
-    print(f"Símbolo físico:      symbols/{target}.kicad_sym")
-    print(f"Footprint físico:    Maker.pretty/{target}.kicad_mod")
+    print(f"Physical Symbol:     symbols/{target}.kicad_sym")
+    print(f"Physical Footprint:  {LIB_NAME}.pretty/{target}.kicad_mod")
     print()
 
 def open_datasheet(target):
     if re.match(r'^C\d+$', target.upper().strip()):
         resolved = find_name_by_lcsc(target)
         if not resolved:
-            print(f"[!] Erro: Nenhum componente encontrado com o código LCSC '{target}'")
+            print(f"[!] Error: No component found with LCSC code '{target}'")
             return
         target = resolved
         
     sym_path = os.path.join(SYM_INDIVIDUAL_DIR, f"{target}.kicad_sym")
     if not os.path.exists(sym_path):
-        print(f"[!] Erro: Componente '{target}' não cadastrado na biblioteca.")
+        print(f"[!] Error: Component '{target}' is not registered in the library.")
         return
         
     try:
@@ -784,22 +862,22 @@ def open_datasheet(target):
         ds_match = re.search(r'\(property\s+"Datasheet"\s+"([^"]+)"', content)
         if ds_match and ds_match.group(1).startswith("http"):
             url = ds_match.group(1)
-            print(f"[*] Abrindo datasheet: {url}")
+            print(f"[*] Opening datasheet: {url}")
             subprocess.Popen(["xdg-open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            print(f"[!] Link do datasheet não disponível ou inválido para '{target}'")
+            print(f"[!] Datasheet URL is not available or invalid for '{target}'")
     except Exception as e:
-        print(f"[!] Erro ao abrir datasheet: {e}")
+        print(f"[!] Error opening datasheet: {e}")
 
 def check_library():
-    print(f"\n=== Auditoria de Integridade: Biblioteca Maker ===\n")
+    print(f"\n=== KiFlux Integrity Audit ===\n")
     if not os.path.exists(SYM_INDIVIDUAL_DIR):
-        print("[✓] Biblioteca vazia e consistente.")
+        print("[✓] Library is empty and consistent.")
         return
         
     files = sorted([f for f in os.listdir(SYM_INDIVIDUAL_DIR) if f.endswith(".kicad_sym")])
     if not files:
-        print("[✓] Biblioteca vazia e consistente.")
+        print("[✓] Library is empty and consistent.")
         return
         
     warnings = 0
@@ -811,7 +889,7 @@ def check_library():
         fp_path = os.path.join(FP_DIR, f"{comp_name}.kicad_mod")
         
         if not os.path.exists(fp_path):
-            print(f"[ERRO] Footprint ausente para o componente '{comp_name}' (esperado: Maker.pretty/{comp_name}.kicad_mod)")
+            print(f"[ERROR] Missing footprint for component '{comp_name}' (expected: {LIB_NAME}.pretty/{comp_name}.kicad_mod)")
             errors += 1
             
         try:
@@ -820,19 +898,19 @@ def check_library():
             
             lcsc_match = re.search(r'\(property\s+"LCSC Part"\s+"([^"]+)"', content)
             jlc_match = re.search(r'\(property\s+"JLCPCB Part #"\s+"([^"]+)"', content)
-            fp_prop_match = re.search(r'\(property\s+"Footprint"\s+"Maker:([^"]+)"', content)
+            fp_prop_match = re.search(r'\(property\s+"Footprint"\s+"([^"]+)"', content)
             
             if not lcsc_match:
-                print(f"[AVISO] Componente '{comp_name}' não possui a propriedade 'LCSC Part' para o BOM.")
+                print(f"[WARNING] Component '{comp_name}' lacks 'LCSC Part' property.")
                 warnings += 1
             if not jlc_match:
-                print(f"[AVISO] Componente '{comp_name}' não possui a propriedade 'JLCPCB Part #' para o BOM.")
+                print(f"[WARNING] Component '{comp_name}' lacks 'JLCPCB Part #' property.")
                 warnings += 1
-            if fp_prop_match and fp_prop_match.group(1) != comp_name:
-                print(f"[ERRO] Componente '{comp_name}' vincula ao footprint '{fp_prop_match.group(1)}' em vez de 'Maker:{comp_name}' (casamento quebrado!)")
+            if fp_prop_match and fp_prop_match.group(1) != f"{LIB_NAME}:{comp_name}":
+                print(f"[ERROR] Component '{comp_name}' links to footprint '{fp_prop_match.group(1)}' instead of '{LIB_NAME}:{comp_name}' (broken match!)")
                 errors += 1
         except Exception as e:
-            print(f"[ERRO] Falha ao ler propriedades do símbolo '{comp_name}': {e}")
+            print(f"[ERROR] Failed to read properties of symbol '{comp_name}': {e}")
             errors += 1
             
         if os.path.exists(fp_path):
@@ -843,31 +921,36 @@ def check_library():
                 if model_match:
                     model_path = model_match.group(1)
                     if not os.path.exists(model_path):
-                        print(f"[ERRO] Footprint '{comp_name}' vincula ao modelo 3D inexistente: {model_path}")
+                        print(f"[ERROR] Footprint '{comp_name}' links to missing 3D model: {model_path}")
                         errors += 1
             except Exception as e:
-                print(f"[ERRO] Falha ao ler footprint '{comp_name}': {e}")
+                print(f"[ERROR] Failed to read footprint '{comp_name}': {e}")
                 errors += 1
                 
     print("-" * 60)
-    print(f"Auditoria finalizada: {errors} erro(s), {warnings} aviso(s).")
+    print(f"Audit completed: {errors} error(s), {warnings} warning(s).")
     if errors == 0 and warnings == 0:
-        print("[✓] Parabéns! A sua biblioteca está 100% íntegra e sem nenhuma inconsistência!")
+        print("[✓] Library is 100% consistent and intact!")
     else:
-        print("[!] Por favor, corrija as inconsistências acima para evitar falhas de produção.")
+        print("[!] Please address the issues listed above to avoid manufacturing defects.")
     print()
 
 def set_library_path(new_path):
     new_path = os.path.abspath(os.path.expanduser(new_path))
-    print(f"[*] Alterando diretório da biblioteca Maker para: {new_path}")
+    print(f"[*] Updating library root to: {new_path}")
     
+    # Cria a nova árvore
     os.makedirs(new_path, exist_ok=True)
     os.makedirs(os.path.join(new_path, "symbols"), exist_ok=True)
-    os.makedirs(os.path.join(new_path, "Maker.pretty"), exist_ok=True)
+    new_lib_name = os.path.basename(new_path.rstrip("/"))
+    if not new_lib_name:
+        new_lib_name = "KiFlux"
+    os.makedirs(os.path.join(new_path, f"{new_lib_name}.pretty"), exist_ok=True)
     os.makedirs(os.path.join(new_path, "3d"), exist_ok=True)
     
     save_config(new_path)
-    print(f"[+] Configuração salva em {CONFIG_FILE}!")
+    update_paths(new_path)
+    print(f"[+] Configuration saved at {CONFIG_FILE}!")
     
     kicad_sym_table = os.path.expanduser("~/.config/kicad/10.0/sym-lib-table")
     kicad_fp_table = os.path.expanduser("~/.config/kicad/10.0/fp-lib-table")
@@ -876,35 +959,52 @@ def set_library_path(new_path):
         try:
             with open(kicad_sym_table, "r", encoding="utf-8") as f:
                 content = f.read()
-            new_uri = os.path.join(new_path, "Maker.kicad_sym")
-            content = re.sub(
-                r'(\(lib\s+\(name\s+"Maker"\)[^\)]*?\(uri\s+")[^"]+(")',
-                rf'\g<1>{new_uri}\g<2>',
-                content
-            )
+            new_uri = os.path.join(new_path, f"{new_lib_name}.kicad_sym")
+            
+            # Checa se já existe a biblioteca Maker ou KiFlux na tabela
+            if f'(name "{new_lib_name}")' in content:
+                content = re.sub(
+                    r'(\(lib\s+\(name\s+"' + re.escape(new_lib_name) + r'"\)[^\)]*?\(uri\s+")[^"]+(")',
+                    rf'\g<1>{new_uri}\g<2>',
+                    content
+                )
+            else:
+                entry = f'  (lib (name "{new_lib_name}")(type "KiCad")(uri "{new_uri}")(options "")(descr ""))\n'
+                insert_pos = content.rfind(')')
+                if insert_pos != -1:
+                    content = content[:insert_pos] + entry + ")"
+            
             with open(kicad_sym_table, "w", encoding="utf-8") as f:
                 f.write(content)
-            print(f"  [~] Tabela de símbolos global do KiCad atualizada.")
+            print(f"  [~] KiCad global symbol library table updated for '{new_lib_name}'.")
         except Exception as e:
-            print(f"  [!] Erro ao atualizar sym-lib-table: {e}")
+            print(f"  [!] Error updating global sym-lib-table: {e}")
             
     if os.path.exists(kicad_fp_table):
         try:
             with open(kicad_fp_table, "r", encoding="utf-8") as f:
                 content = f.read()
-            new_uri = os.path.join(new_path, "Maker.pretty")
-            content = re.sub(
-                r'(\(lib\s+\(name\s+"Maker"\)[^\)]*?\(uri\s+")[^"]+(")',
-                rf'\g<1>{new_uri}\g<2>',
-                content
-            )
+            new_uri = os.path.join(new_path, f"{new_lib_name}.pretty")
+            
+            if f'(name "{new_lib_name}")' in content:
+                content = re.sub(
+                    r'(\(lib\s+\(name\s+"' + re.escape(new_lib_name) + r'"\)[^\)]*?\(uri\s+")[^"]+(")',
+                    rf'\g<1>{new_uri}\g<2>',
+                    content
+                )
+            else:
+                entry = f'  (lib (name "{new_lib_name}")(type "KiCad")(uri "{new_uri}")(options "")(descr ""))\n'
+                insert_pos = content.rfind(')')
+                if insert_pos != -1:
+                    content = content[:insert_pos] + entry + ")"
+                    
             with open(kicad_fp_table, "w", encoding="utf-8") as f:
                 f.write(content)
-            print(f"  [~] Tabela de footprints global do KiCad atualizada.")
+            print(f"  [~] KiCad global footprint library table updated for '{new_lib_name}'.")
         except Exception as e:
-            print(f"  [!] Erro ao atualizar fp-lib-table: {e}")
+            print(f"  [!] Error updating global fp-lib-table: {e}")
             
-    print("[+] Caminho reconfigurado com sucesso!")
+    print("[+] Paths reconfigured successfully!")
 
 def extract_symbols_from_sch(sch_path):
     with open(sch_path, "r", encoding="utf-8") as f:
@@ -1014,7 +1114,7 @@ def extract_placements_from_pcb(pcb_path):
 def export_bom_and_cpl(project_dir, output_dir=None):
     project_dir = os.path.abspath(os.path.expanduser(project_dir))
     if not os.path.exists(project_dir) or not os.path.isdir(project_dir):
-        print(f"[!] Erro: Diretório do projeto não existe: {project_dir}")
+        print(f"[!] Error: Project directory does not exist: {project_dir}")
         sys.exit(1)
         
     if output_dir:
@@ -1023,8 +1123,8 @@ def export_bom_and_cpl(project_dir, output_dir=None):
     else:
         output_dir = project_dir
         
-    print(f"[*] Analisando diretório do projeto: {project_dir}")
-    print(f"[*] Diretório de saída dos relatórios: {output_dir}")
+    print(f"[*] Scanning project directory: {project_dir}")
+    print(f"[*] Output directory for reports: {output_dir}")
     
     # Encontra arquivos .kicad_sch
     sch_files = [os.path.join(project_dir, f) for f in os.listdir(project_dir) if f.endswith(".kicad_sch")]
@@ -1032,17 +1132,17 @@ def export_bom_and_cpl(project_dir, output_dir=None):
     pcb_files = [os.path.join(project_dir, f) for f in os.listdir(project_dir) if f.endswith(".kicad_pcb")]
     
     if not sch_files:
-        print("[!] Erro: Nenhum arquivo de esquema (.kicad_sch) encontrado neste diretório.")
+        print("[!] Error: No schematic file (.kicad_sch) found in this directory.")
         sys.exit(1)
         
     # 1. Processamento da BOM
     all_components = []
     for sch_path in sch_files:
-        print(f"  [+] Lendo esquema: {os.path.basename(sch_path)}")
+        print(f"  [+] Reading schematic: {os.path.basename(sch_path)}")
         all_components.extend(extract_symbols_from_sch(sch_path))
         
     if not all_components:
-        print("[!] Nenhum componente válido para BOM encontrado nos esquemas.")
+        print("[!] No valid components for BOM found in schematics.")
         sys.exit(0)
         
     # Agrupa por valor, footprint e código LCSC
@@ -1066,12 +1166,12 @@ def export_bom_and_cpl(project_dir, output_dir=None):
             designator_str = ", ".join(refs_sorted)
             writer.writerow([val, designator_str, fp_clean, lcsc])
             
-    print(f"[+] BOM exportada com sucesso: {os.path.join(os.path.basename(output_dir), 'BOM_JLCPCB.csv')} ({len(all_components)} componente(s) agrupado(s) em {len(grouped)} linha(s))")
+    print(f"[+] BOM exported successfully: {os.path.join(os.path.basename(output_dir), 'BOM_JLCPCB.csv')} ({len(all_components)} part(s) grouped into {len(grouped)} lines)")
     
     # 2. Processamento do CPL (coordenadas)
     if pcb_files:
         pcb_path = pcb_files[0]
-        print(f"  [+] Lendo layout da placa: {os.path.basename(pcb_path)}")
+        print(f"  [+] Reading PCB layout: {os.path.basename(pcb_path)}")
         placements = extract_placements_from_pcb(pcb_path)
         
         if placements:
@@ -1083,13 +1183,16 @@ def export_bom_and_cpl(project_dir, output_dir=None):
                 for p in sorted(placements, key=lambda x: (re.sub(r'\d+', '', x["ref"]), int(re.search(r'\d+', x["ref"]).group(0)) if re.search(r'\d+', x["ref"]) else 0)):
                     writer.writerow([p["ref"], f"{p['x']:.4f}", f"{p['y']:.4f}", f"{p['rot'] % 360:.2f}", p["layer"]])
                     
-            print(f"[+] CPL (Centroid) exportado com sucesso: {os.path.join(os.path.basename(output_dir), 'CPL_JLCPCB.csv')} ({len(placements)} coordenadas registradas)")
+            print(f"[+] CPL (Centroid) exported successfully: {os.path.join(os.path.basename(output_dir), 'CPL_JLCPCB.csv')} ({len(placements)} placements registered)")
         else:
-            print("  [!] Nenhum footprint encontrado com coordenadas válidas no layout.")
+            print("  [!] No valid component coordinates found in the layout file.")
     else:
-        print("  [~] Nenhum arquivo .kicad_pcb encontrado (pulando a geração do CPL).")
+        print("  [~] No .kicad_pcb file found (skipping CPL export).")
 
 def main():
+    # Garante a existência do arquivo de configuração ou executa o Onboarding
+    ensure_config_exists()
+    
     args = parse_args()
     
     # Mapeamento de termos posicionais amigáveis
@@ -1101,26 +1204,29 @@ def main():
         elif cmd == "check":
             args.check = True
             args.positional_args = args.positional_args[1:]
+        elif cmd == "init":
+            args.init = True
+            args.positional_args = args.positional_args[1:]
         elif cmd == "directory" or cmd == "path":
             if len(args.positional_args) > 1:
                 args.set_path = args.positional_args[1]
                 args.positional_args = []
             else:
-                print("[!] Erro: Você deve fornecer o caminho do diretório. Ex: kiflux directory /novo/caminho")
+                print("[!] Error: You must specify the directory path. e.g. 'kiflux directory /new/path'")
                 sys.exit(1)
         elif cmd == "info":
             if len(args.positional_args) > 1:
                 args.info = args.positional_args[1]
                 args.positional_args = []
             else:
-                print("[!] Erro: Você deve fornecer o componente ou código LCSC. Ex: kiflux info C2040")
+                print("[!] Error: You must specify a component name or LCSC code. e.g. 'kiflux info C2040'")
                 sys.exit(1)
         elif cmd == "datasheet":
             if len(args.positional_args) > 1:
                 args.datasheet = args.positional_args[1]
                 args.positional_args = []
             else:
-                print("[!] Erro: Você deve fornecer o componente ou código LCSC. Ex: kiflux datasheet C2040")
+                print("[!] Error: You must specify a component name or LCSC code. e.g. 'kiflux datasheet C2040'")
                 sys.exit(1)
         elif cmd == "bom":
             if len(args.positional_args) > 1:
@@ -1134,34 +1240,35 @@ def main():
                 args.bom = "."
                 args.bom_output = None
                 args.positional_args = []
+                
+    if args.init:
+        init_kiflux(force=True)
+        sys.exit(0)
     
     # Trata uso rápido posicional padrão
     if args.positional_args:
         if not args.lcsc and not args.remove and not args.rename_from and not args.rebuild and not args.rename and not args.bom:
             pos_args = args.positional_args
             if re.match(r'^C\d+$', pos_args[0].upper().strip()):
-                # Caso 1: Apenas 1 argumento posicional (Ex: kiflux C2040)
                 if len(pos_args) == 1:
                     import_single_component(pos_args[0])
                     sys.exit(0)
-                # Caso 2: 2 argumentos posicionais e o segundo NÃO é um código LCSC (Ex: kiflux C2040 NOME)
                 elif len(pos_args) == 2 and not re.match(r'^C\d+$', pos_args[1].upper().strip()):
                     import_single_component(pos_args[0], pos_args[1])
                     sys.exit(0)
-                # Caso 3: Múltiplos argumentos e todos ou o segundo são códigos LCSC (Ex: kiflux C2040 C8791)
                 else:
-                    print(f"[*] Detectada importação em lote de {len(pos_args)} componentes...")
+                    print(f"[*] Batch importing {len(pos_args)} components...")
                     success_count = 0
                     for lcsc_code in pos_args:
                         if re.match(r'^C\d+$', lcsc_code.upper().strip()):
                             if import_single_component(lcsc_code):
                                 success_count += 1
                         else:
-                            print(f"[!] Pulando argumento '{lcsc_code}' pois não é um código LCSC válido em importação em lote.")
-                    print(f"\n[+] Importação em lote concluída: {success_count} de {len(pos_args)} componentes importados com sucesso!")
+                            print(f"[!] Skipping invalid argument '{lcsc_code}' in batch import.")
+                    print(f"\n[+] Batch import completed: {success_count} of {len(pos_args)} components imported successfully!")
                     sys.exit(0)
             else:
-                print(f"[!] Erro: O primeiro argumento '{pos_args[0]}' deve ser um código LCSC válido (ex: C2040).")
+                print(f"[!] Error: First argument '{pos_args[0]}' must be a valid LCSC Part Number (e.g. C2040).")
                 sys.exit(1)
                 
     if args.bom:
@@ -1197,27 +1304,27 @@ def main():
         if re.match(r'^C\d+$', target.upper().strip()):
             resolved_name = find_name_by_lcsc(target)
             if resolved_name:
-                print(f"[*] Código LCSC '{target}' resolved para o componente '{resolved_name}'")
+                print(f"[*] LCSC ID '{target}' resolved to component '{resolved_name}'")
                 target = resolved_name
             else:
-                print(f"[!] Não foi possível encontrar nenhum componente cadastrado com o código LCSC '{target}'")
+                print(f"[!] Could not find any registered component with LCSC ID '{target}'")
                 sys.exit(1)
         remove_component(target)
         sys.exit(0)
         
     if args.rename_from or args.rename_to:
         if not args.rename_from or not args.rename_to:
-            print("[!] Erro: Para renomear, você deve passar ambos os parâmetros --rename-from e --rename-to.")
+            print("[!] Error: You must pass both --rename-from and --rename-to parameters.")
             sys.exit(1)
             
         target_from = args.rename_from
         if re.match(r'^C\d+$', target_from.upper().strip()):
             resolved_name = find_name_by_lcsc(target_from)
             if resolved_name:
-                print(f"[*] Código LCSC '{target_from}' resolved para o componente '{resolved_name}'")
+                print(f"[*] LCSC ID '{target_from}' resolved to component '{resolved_name}'")
                 target_from = resolved_name
             else:
-                print(f"[!] Não foi possível encontrar nenhum componente cadastrado com o código LCSC '{target_from}'")
+                print(f"[!] Could not find any registered component with LCSC ID '{target_from}'")
                 sys.exit(1)
         rename_component(target_from, args.rename_to)
         sys.exit(0)
@@ -1230,28 +1337,28 @@ def main():
             lcsc_id = target.upper().strip()
             resolved_name = find_name_by_lcsc(lcsc_id)
             if not resolved_name:
-                print(f"[!] Erro: Nenhum componente cadastrado localmente com o código LCSC '{lcsc_id}'.")
+                print(f"[!] Error: No component registered with LCSC ID '{lcsc_id}'.")
                 sys.exit(1)
             target = resolved_name
         else:
             sym_path = os.path.join(SYM_INDIVIDUAL_DIR, f"{target}.kicad_sym")
             if not os.path.exists(sym_path):
-                print(f"[!] Erro: Componente '{target}' não encontrado em symbols/{target}.kicad_sym")
+                print(f"[!] Error: Component '{target}' not found at symbols/{target}.kicad_sym")
                 sys.exit(1)
             with open(sym_path, "r", encoding="utf-8") as f:
                 content = f.read()
             lcsc_match = re.search(r'\(property\s+"LCSC Part"\s+"([^"]+)"', content)
             if not lcsc_match:
-                print(f"[!] Erro: Não foi possível encontrar o código LCSC no símbolo de '{target}' para buscar metadados.")
+                print(f"[!] Error: Could not extract LCSC Part number from local symbol metadata.")
                 sys.exit(1)
             lcsc_id = lcsc_match.group(1).upper().strip()
             
-        print(f"[*] Buscando metadados na LCSC para o código '{lcsc_id}'...")
+        print(f"[*] Fetching metadata for LCSC code '{lcsc_id}'...")
         run_easyeda2kicad(lcsc_id)
         value, manufacturer, package = extract_properties_from_temp()
         
         if not value:
-            print("[!] Erro: Não foi possível obter os metadados da LCSC.")
+            print("[!] Error: Could not obtain metadata from LCSC API.")
             sys.exit(1)
             
         temp_sym_path = os.path.join(TEMP_DIR, "Maker.kicad_sym")
@@ -1261,12 +1368,12 @@ def main():
                 temp_sym_content = f.read()
                 
         new_name = generate_standardized_name(value, manufacturer, package, temp_sym_content)
-        print(f"[+] Metadados LCSC: Valor={value}, Fabricante={manufacturer}, Encapsulamento={package}")
-        print(f"[+] Nome automático gerado: '{new_name}'")
+        print(f"[+] LCSC Metadata: Value={value}, Manufacturer={manufacturer}, Package={package}")
+        print(f"[+] Standardized Name generated: '{new_name}'")
         
-        confirm = input(f"\nDeseja confirmar a renomeação para '{new_name}'? [S/n]: ").strip().lower()
-        if confirm not in ['', 's', 'sim']:
-            print("[!] Renomeação automática cancelada.")
+        confirm = input(f"\nDo you want to confirm the automatic renaming to '{new_name}'? [S(yes) / n(no)]: ").strip().lower()
+        if confirm not in ['', 's', 'yes']:
+            print("[!] Automatic renaming canceled.")
             if os.path.exists(TEMP_DIR):
                 shutil.rmtree(TEMP_DIR)
             sys.exit(0)
@@ -1281,7 +1388,7 @@ def main():
         import_single_component(args.lcsc, args.name)
         sys.exit(0)
         
-    print("[!] Nenhuma ação válida fornecida. Use --help para ver as opções.")
+    print("[!] No action specified. Use --help to view available commands.")
     sys.exit(1)
 
 if __name__ == "__main__":

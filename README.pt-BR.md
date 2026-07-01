@@ -24,7 +24,18 @@ O **KiFlux** une os dois mundos em um motor de terminal leve, rápido e intelige
 
 ---
 
-## 🧬 2. Arquitetura do Sistema
+## 🚀 2. Instalação e Configuração
+
+O KiFlux é uma ferramenta Python leve e de código aberto (open-source). Para instalá-lo diretamente a partir deste repositório do GitHub com todas as suas dependências, execute:
+
+```bash
+pip install git+https://github.com/oMatheus13/KiFlux.git
+```
+*(Nota: Certifique-se de ter o **Python 3.8+** instalado no seu sistema. Esse comando registrará o comando executável global `kiflux` no seu terminal automaticamente.)*
+
+---
+
+## 🧬 3. Arquitetura do Sistema
 
 O fluxo de dados do **KiFlux** foi desenhado para ser transparente, protegendo a biblioteca local contra corrupções e arquivos duplicados.
 
@@ -42,15 +53,15 @@ graph TD
     IR --> G
     H -- "S (Sim/Enter)" --> J["Gravação da Tríade e Links Internos"]
     J --> K["Escrita: symbols/Nome.kicad_sym"]
-    J --> L["Escrita: Maker.pretty/Nome.kicad_mod"]
+    J --> L["Escrita: KiFlux.pretty/Nome.kicad_mod"]
     J --> M["Escrita: 3d/Nome.wrl & .step"]
-    K --> N["Reconstrução do Maker.kicad_sym Consolidado"]
+    K --> N["Reconstrução do KiFlux.kicad_sym Consolidado"]
     N --> O["Atualização Instantânea no KiCad 10"]
 ```
 
 ---
 
-## 📦 3. Convenção de Nomenclatura Padrão
+## 📦 4. Convenção de Nomenclatura Padrão
 
 A convenção de nomes utiliza *snake_case* e é baseada estritamente na categoria do metadado oficial do componente na LCSC, higienizando sufixos indesejados.
 
@@ -72,17 +83,23 @@ Estrutura: `CATEGORIA_MODELO_ENCAPSULAMENTO_FABRICANTE`
 
 ---
 
-## 💻 4. Guia Rápido de Uso (Quickstart CLI)
+## 💻 5. Guia Rápido de Uso (Quickstart CLI)
 
 Todas as interações administrativas da biblioteca podem ser feitas de forma simples no terminal do seu sistema operacional utilizando o comando `kiflux`.
 
-### 📥 Importação e Atualização de Componentes
+### 📥 Inicialização e Gerenciamento de Componentes
+
+*   **Assistente Guiado de Configuração Interativa:**
+    ```bash
+    kiflux init
+    ```
+    *Inicia o assistente de configuração no seu terminal. Ele perguntará onde você deseja guardar a biblioteca (padrão: `~/KiCad/KiFlux`) e registra-a globalmente no KiCad. Se você rodar qualquer comando de importação sem ter feito isso antes, o KiFlux oferecerá iniciar a configuração na hora.*
 
 *   **Importação Padrão (Nome Completo Sugerido):**
     ```bash
     kiflux C2040
     ```
-    *(Busca o componente e já sugere por padrão o nome completo padronizado longo, ex: `MCU_RP2040_QFN56_RPI`. No prompt, você escolhe:)*
+    *Busca o componente e já sugere por padrão o nome completo padronizado longo, ex: `MCU_RP2040_QFN56_RPI`. No prompt, você escolhe:*
     *   **Confirmar (Enter / S):** Grava com o nome padronizado sugerido.
     *   **Personalizar (Teclar `r` ou `r NOME`):** Permite digitar um nome customizado desejado na hora (interativo ou inline) caso o nome automático tenha alguma inconsistência.
     *   **Cancelar (Teclar `n`):** Aborta a importação.
@@ -163,15 +180,15 @@ Todas as interações administrativas da biblioteca podem ser feitas de forma si
 
 ---
 
-## 🛠️ 5. Estrutura Física de Diretórios
+## 🛠️ 6. Estrutura Física de Diretórios
 
-O diretório de destino configurado pelo usuário é estruturado da seguinte forma pelo motor `kiflux`:
+O diretório de destino configurado pelo usuário é estruturado da seguinte forma pelo motor `kiflux` (assumindo o nome `KiFlux` como exemplo):
 
 ```text
-Maker/
+KiFlux/
 ├── config.json                     # Preferências locais e caminhos
-├── Maker.kicad_sym                 # Símbolo consolidado lido pelo KiCad 10
-├── Maker.pretty/                   # Pasta nativa de footprints do KiCad
+├── KiFlux.kicad_sym                # Símbolo consolidado lido pelo KiCad 10
+├── KiFlux.pretty/                  # Pasta nativa de footprints do KiCad
 │   ├── MCU_RP2040_QFN56_RPI.kicad_mod
 │   └── IC_CH340G_SOIC16_WCH.kicad_mod
 ├── symbols/                        # Arquivos individuais de símbolos (Git-friendly)
@@ -186,10 +203,16 @@ Maker/
 
 ---
 
-## ❓ 6. Perguntas Frequentes (FAQ)
+## 📄 7. Licença
+
+Este projeto é de código aberto (open-source) e licenciado sob a **Licença MIT**. Sinta-se livre para usar, modificar e distribuir! Veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+---
+
+## ❓ 8. Perguntas Frequentes (FAQ)
 
 ### 1. Posso usar controle de versão (Git) nesta biblioteca?
-**Sim, absolutamente!** O KiFlux foi projetado com isso em mente. A pasta `symbols/` contém arquivos de símbolo individuais. O arquivo principal `Maker.kicad_sym` é reconstruído dinamicamente a partir deles. Você pode adicionar as pastas `symbols/`, `Maker.pretty/` e `3d/` ao Git. Recomenda-se ignorar o arquivo consolidado `Maker.kicad_sym` no seu `.gitignore` e rodar `kiflux --rebuild` ao clonar a biblioteca em outra máquina.
+**Sim, absolutamente!** O KiFlux foi projetado com isso em mente. A pasta `symbols/` contém arquivos de símbolo individuais. O arquivo principal `KiFlux.kicad_sym` é reconstruído dinamicamente a partir deles. Você pode adicionar as pastas `symbols/`, `KiFlux.pretty/` e `3d/` ao Git. Recomenda-se ignorar o arquivo consolidado `KiFlux.kicad_sym` no seu `.gitignore` e rodar `kiflux --rebuild` ao clonar a biblioteca em outra máquina.
 
 ### 2. O que acontece se eu atualizar meu KiCad para uma versão futura?
 Nada é quebrado. A biblioteca usa a sintaxe de arquivos S-expression padrão e universal do KiCad (versão 20231120+). A única coisa necessária é atualizar a localização da tabela global se você mudar de computador, o que pode ser feito instantaneamente rodando `kiflux directory /caminho/da/pasta`.
