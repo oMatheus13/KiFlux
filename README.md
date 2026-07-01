@@ -1,179 +1,180 @@
-# ⚡ KiFlux: O Gerenciador Inteligente de Bibliotecas e BOM/CPL para KiCad 10
+# ⚡ KiFlux: Smart Library Manager & BOM/CPL Exporter for KiCad
 
-> A biblioteca infinita do EasyEDA aliada ao casamento estrito do Horizon EDA. Tudo em tempo real dentro do KiCad.
+[![Language](https://img.shields.io/badge/language-python-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![KiCad Version](https://img.shields.io/badge/KiCad-v10.0-orange.svg)](https://kicad.org/)
 
-**KiCad Version:** v10.0 | **Engine:** Python 3 | **Style:** Horizon EDA | **License:** Personal Tool | **CLI:** `kiflux`
+Translations: **English** | [Português (Brasil)](./README.pt-BR.md) | [Español](./README.es.md)
 
----
-
-## 🌟 1. Filosofia de Design
-
-O **KiFlux** foi concebido para resolver o maior pesadelo no design de circuitos integrados e PCBs: **o gerenciamento caótico de bibliotecas**. 
-
-Tradicionalmente, projetistas perdem horas criando símbolos, desenhando pegadas (footprints) e vinculando arquivos 3D. Ferramentas como o EasyEDA possuem uma biblioteca gigantesca fornecida pela LCSC, mas pecam na consistência de nomenclatura e no controle estrito de links. Ferramentas como o Horizon EDA implementam a consistência perfeita (o conceito da Tríade Inseparável), mas carecem de importação rápida.
-
-O **KiFlux** une os dois mundos em um motor de terminal leve, rápido e inteligente:
-1.  **A Tríade Inseparável:** Um Símbolo, um Footprint e um Modelo 3D compartilham exatamente o mesmo nome padronizado.
-2.  **Importação Instantânea:** Basta passar o código da LCSC (ex: `C2040`) e o CLI resolve, baixa, formata e publica na biblioteca.
-3.  **Visualização em Tempo Real:** Conexão nativa com a API do KiCad 10 que atualiza as janelas de seleção de símbolos e footprints no exato momento da importação.
-4.  **Exportação Fluída:** Gera a BOM e o CPL no formato exato da JLCPCB com um único comando na pasta do projeto.
+> The infinite library of EasyEDA meets the strict component-matching philosophy of Horizon EDA. Automated, fast, and real-time within KiCad.
 
 ---
 
-## 🧬 2. Arquitetura do Sistema
+## 🌟 1. Design Philosophy
 
-O fluxo de dados do **KiFlux** foi desenhado para ser transparente, protegendo a biblioteca local contra corrupções e arquivos duplicados.
+**KiFlux** was conceived to solve the biggest nightmare in PCB design: **chaotic library management**.
+
+Traditionally, designers waste hours creating symbols, drawing footprints, and linking 3D models. While tools like EasyEDA offer massive libraries powered by LCSC, they often lack strict naming conventions and file-link integrity. On the other hand, tools like Horizon EDA implement the perfect consistency model (the "Inseparable Triad") but lack quick component importing.
+
+**KiFlux** bridges these two worlds into a lightweight, fast, and intelligent CLI engine:
+1.  **The Inseparable Triad:** Every schematic Symbol, PCB Footprint, and 3D Model shares the exact same standardized name and internal links.
+2.  **Instant Import:** Just pass the LCSC part number (e.g., `C2040`) and the CLI automatically queries, downloads, cleans up, and publishes the component to your library.
+3.  **Real-Time Visualization:** Native integration with KiCad 10’s file system ensures that your library updates instantly inside KiCad the moment you run the command.
+4.  **One-Click Export:** Generates standardized BOM and CPL files ready for manufacturing directly from your project directory.
+
+---
+
+## 🧬 2. System Architecture
+
+The data flow of **KiFlux** is designed to keep your local libraries safe, clean, and free of duplicate files.
 
 ```mermaid
 graph TD
-    A["kiflux C2040 (LCSC ID)"] --> B["easyeda2kicad (Query API LCSC)"]
-    B --> C["Extração de Arquivos Temporários (/tmp)"]
-    C --> D["Análise de Metadados (Value, Mfr, Package)"]
-    D --> E["Análise de ki_keywords & ki_description (LCSC Catálogo)"]
-    E --> F["Heurística de Categorização (MCU, REG, C, R, IC...)"]
-    F --> G["Geração do Nome Sugerido (Estilo Horizon)"]
-    G --> H{"Aprovação do Usuário [S/n/r]"}
-    H -- "n (Não)" --> I["Abortar (Limpa /tmp)"]
-    H -- "r (Renomear/Customizar)" --> IR["Entrada de Nome Manual"]
+    A["kiflux C2040 (LCSC ID)"] --> B["easyeda2kicad (Query LCSC API)"]
+    B --> C["Extract Temporary Files (/tmp)"]
+    C --> D["Metadata Parsing (Value, Mfr, Package)"]
+    D --> E["Keyword & Description Analysis"]
+    E --> F["Categorization Heuristics (MCU, REG, C, R, IC...)"]
+    F --> G["Horizon-Style Name Generation"]
+    G --> H{"User Confirmation [S/n/r]"}
+    H -- "n (No)" --> I["Abort (Clean /tmp)"]
+    H -- "r (Rename/Customize)" --> IR["Manual Name Input"]
     IR --> G
-    H -- "S (Sim/Enter)" --> J["Gravação da Tríade e Links Internos"]
-    J --> K["Escrita: symbols/Nome.kicad_sym"]
-    J --> L["Escrita: Maker.pretty/Nome.kicad_mod"]
-    J --> M["Escrita: 3d/Nome.wrl & .step"]
-    K --> N["Reconstrução do Maker.kicad_sym Consolidado"]
-    N --> O["Atualização Instantânea no KiCad 10"]
+    H -- "S (Yes/Enter)" --> J["Write Triad & Internal Links"]
+    J --> K["Save: symbols/Name.kicad_sym"]
+    J --> L["Save: Maker.pretty/Name.kicad_mod"]
+    J --> M["Save: 3d/Name.wrl & .step"]
+    K --> N["Rebuild Consolidated Maker.kicad_sym"]
+    N --> O["Instant Live Update in KiCad 10"]
 ```
 
 ---
 
-## 📦 3. Convenção de Nomenclatura Padrão
+## 📦 3. Naming Conventions
 
-A convenção de nomes utiliza *snake_case* e é baseada estritamente na categoria do metadado oficial do componente na LCSC, higienizando sufixos indesejados.
+All imported components are automatically renamed using *snake_case* based on the physical parameters and official LCSC category, cleaning up messy manufacturer suffixes.
 
-### A. Componentes Passivos
-Estrutura: `PREFIXO_ENCAPSULAMENTO_VALOR_FABRICANTE`
-*   **Capacitores (`C_`):** `C_0805_100n_SAMSUNG`, `C_0402_10u_YAGEO`
-*   **Resistores (`R_`):** `R_0603_10k_UNIROYAL`, `R_0805_0r1_UNIROYAL`
+### A. Passive Components
+Structure: `PREFIX_PACKAGE_VALUE_MANUFACTURER`
+*   **Capacitors (`C_`):** `C_0805_100n_SAMSUNG`, `C_0402_10u_YAGEO`
+*   **Resistors (`R_`):** `R_0603_10k_UNIROYAL`, `R_0805_0r1_UNIROYAL`
 
 > [!NOTE]  
-> A identificação de passivos usa expressões regulares estritas (como `^\d+(\.\d+)?(p|n|u|m)?F?$`) para evitar que transceptores de RF como o `nRF24L01` ou CIs reguladores que possuam a letra **F** ou **R** no nome sejam confundidos com capacitores ou resistores.
+> Passive component identification uses strict regex matching (e.g. `^\d+(\.\d+)?(p|n|u|m)?F?$`) to prevent RF transceivers (like `nRF24L01`) or voltage regulators that contain letters **F** or **R** in their value from being miscategorized.
 
-### B. Semicondutores, CIs e Ativos
-Estrutura: `CATEGORIA_MODELO_ENCAPSULAMENTO_FABRICANTE`
-*   **Microcontroladores (`MCU_`):** `MCU_RP2040_QFN56_RPI`, `MCU_RP2350B_QFN80_RPI`, `MCU_ESP32_S3_QFN56_ESPRESSIF`
-*   **Reguladores (`REG_`):** `REG_AMS1117_3_3_SOT223_AMS`, `REG_LM7805_TO220_TI`
-*   **Diodos e Zeners (`DIODE_`):** `DIODE_1N4148_SOD323_CJ`
-*   **Transistores e MOSFETs (`TRANS_`):** `TRANS_2N7002_SOT23_NXP`
-*   **Circuitos Integrados Gerais (`IC_`):** `IC_CH340G_SOIC16_WCH`, `IC_NRF24L01P-R_QFN20_NORDIC`
+### B. Semiconductors, ICs and Actives
+Structure: `CATEGORY_MODEL_PACKAGE_MANUFACTURER`
+*   **Microcontrollers (`MCU_`):** `MCU_RP2040_QFN56_RPI`, `MCU_RP2350B_QFN80_RPI`, `MCU_ESP32_S3_QFN56_ESPRESSIF`
+*   **Regulators (`REG_`):** `REG_AMS1117_3_3_SOT223_AMS`, `REG_LM7805_TO220_TI`
+*   **Diodes & Zeners (`DIODE_`):** `DIODE_1N4148_SOD323_CJ`
+*   **Transistors & MOSFETs (`TRANS_`):** `TRANS_2N7002_SOT23_NXP`
+*   **General ICs (`IC_`):** `IC_CH340G_SOIC16_WCH`, `IC_NRF24L01P-R_QFN20_NORDIC`
 
 ---
 
-## 💻 4. Guia Rápido de Uso (Quickstart CLI)
+## 💻 4. CLI Quickstart Guide
 
-Todas as interações administrativas da biblioteca podem ser feitas de forma simples no terminal do seu sistema operacional utilizando o comando `kiflux` (ou o atalho retrocompatível `maker`).
+Manage your KiCad libraries directly from your terminal using the `kiflux` CLI tool.
 
-### 📥 Importação e Atualização de Componentes
+### 📥 Component Importing & Management
 
-*   **Importação Padrão (Nome Completo Sugerido):**
+*   **Standard Import (Suggested Naming):**
     ```bash
     kiflux C2040
     ```
-    *(Busca o componente e já sugere por padrão o nome completo padronizado longo, ex: `MCU_RP2040_QFN56_RPI`. No prompt, você escolhe:)*
-    *   **Confirmar (Enter / S):** Grava com o nome padronizado sugerido.
-    *   **Personalizar (Teclar `r` ou `r NOME`):** Permite digitar um nome customizado desejado na hora (interativo ou inline) caso o nome automático tenha alguma inconsistência.
-    *   **Cancelar (Teclar `n`):** Aborta a importação.
+    *Fetches the component and suggests the standardized name `MCU_RP2040_QFN56_RPI`. In the prompt:*
+    *   **Confirm (Enter / S):** Installs the component with the suggested name.
+    *   **Customize (Type `r` or `r NAME`):** Opens a prompt to type your own custom name, or renames inline.
+    *   **Cancel (Type `n`):** Aborts the import.
 
-*   **Importação em Lote (Batch Import):**
+*   **Batch Import:**
     ```bash
     kiflux C2040 C8791 C42415655
     ```
-    *(Detecta múltiplos códigos LCSC na entrada e executa o fluxo sequencial para cada um, solicitando a confirmação de nome individualmente de forma interativa).*
+    *Automatically imports multiple LCSC parts in sequence, prompting for verification on each.*
 
-*   **Importação com Nome Personalizado Forçado:**
+*   **Force Custom Name:**
     ```bash
-    kiflux C2040 MEU_NOME_CUSTOMIZADO
+    kiflux C2040 MY_CUSTOM_NAME
     ```
 
-*   **Renomeação Automática (Heurística Baseada em LCSC):**
+*   **Automatic Re-naming (LCSC Heuristics):**
     ```bash
     kiflux --rename C2040
-    # ou usando o nome atual
+    # or by its local component name
     kiflux --rename MCU_RP2040_QFN56_RPI
     ```
 
-*   **Exclusão Limpa de Componente:**
+*   **Clean Component Removal:**
     ```bash
     kiflux --remove C2040
-    # ou usando o nome físico
+    # or by its local component name
     kiflux --remove MCU_RP2040_QFN56_RPI
     ```
-    *(Apaga o símbolo individual, o footprint físico, os modelos 3D associados e reconstrói a biblioteca global do KiCad).*
+    *Deletes the individual symbol, footprint mod, 3D files, and rebuilds the consolidated library.*
 
-*   **Exportar BOM & CPL (JLCPCB):**
+*   **Export BOM & CPL (For Manufacturing):**
     ```bash
-    # Na pasta do projeto (salva na pasta atual)
+    # Run inside the project directory (exports to current folder)
     kiflux bom
-    # Informando a pasta do projeto (salva na pasta do projeto)
-    kiflux bom /caminho/do/projeto
-    # Informando a pasta do projeto e escolhendo outra pasta para salvar os relatórios
-    kiflux bom /caminho/do/projeto /caminho/da/saida
+    # Specify the project path (exports to project folder)
+    kiflux bom /path/to/project
+    # Specify project path and a different output folder
+    kiflux bom /path/to/project /path/to/output
     ```
-    *(Varre os arquivos .kicad_sch e .kicad_pcb no diretório do projeto e gera os arquivos BOM_JLCPCB.csv e CPL_JLCPCB.csv formatados exatamente no formato exigido pela JLCPCB para montagem no diretório de saída informado ou padrão).*
+    *Scans `.kicad_sch` and `.kicad_pcb` files and exports `BOM_JLCPCB.csv` and `CPL_JLCPCB.csv` formatted exactly for assembly machines.*
 
 ---
 
-### 🔍 Auditoria, Consultas e Utilitários
+### 🔍 Audit, Queries & Utilities
 
-*   **Inventário Completo da Biblioteca (`kiflux list`):**
+*   **Library Inventory (`kiflux list`):**
     ```bash
     kiflux list
     ```
-    Apresenta uma tabela contendo todos os componentes locais, seus códigos LCSC associados, fabricantes e o status de presença dos modelos 3D (`.wrl` e `.step`).
+    Shows a table of all registered components, their LCSC codes, manufacturers, and 3D model status.
 
-*   **Auditoria de Integridade (`kiflux check`):**
+*   **Library Audit (`kiflux check`):**
     ```bash
     kiflux check
     ```
-    Varre toda a biblioteca local emitindo relatórios de segurança caso encontre:
-    *   Símbolos que apontam para footprints inexistentes;
-    *   Footprints que apontam para modelos 3D ausentes no disco;
-    *   Componentes que não contêm o código LCSC (o que quebraria a geração automática de BOM da JLCPCB).
+    Audits the entire local library looking for broken links, missing footprints, or symbols lacking LCSC codes.
 
-*   **Ficha Técnica Off-line (`kiflux info`):**
+*   **Off-line Component Info (`kiflux info`):**
     ```bash
     kiflux info C2040
     ```
-    Exibe fabricante, MPN, encapsulamento físico, caminhos dos arquivos no disco e link do datasheet oficial.
+    Displays manufacturer, MPN, physical package, datasheet link, and local file paths.
 
-*   **Abrir Datasheet Instantâneo (`kiflux datasheet`):**
+*   **Open Datasheet Instantaneously (`kiflux datasheet`):**
     ```bash
     kiflux datasheet C2040
     ```
-    Abre o link do datasheet em PDF diretamente no seu navegador em segundo plano (sem travar o terminal).
+    Opens the PDF datasheet link in your default web browser in the background.
 
-*   **Mapeamento de Diretório Dinâmico (`kiflux directory`):**
+*   **Reconfigure Library Path (`kiflux directory`):**
     ```bash
-    kiflux directory /caminho/para/o/hd/Maker
+    kiflux directory /path/to/new/library
     ```
-    Gera a árvore de pastas no novo diretório de destino e reconfigura as tabelas globais do KiCad 10 (`sym-lib-table` e `fp-lib-table`) automaticamente.
+    Moves the configuration and updates KiCad's global `sym-lib-table` and `fp-lib-table` paths.
 
 ---
 
-## 🛠️ 5. Estrutura Física de Diretórios
+## 🛠️ 5. Physical Library Structure
 
-O diretório de destino configurado pelo usuário é estruturado da seguinte forma pelo motor `kiflux`:
+Your library directory is structured as follows:
 
 ```text
 Maker/
-├── config.json                     # Preferências locais e caminhos
-├── Maker.kicad_sym                 # Símbolo consolidado lido pelo KiCad 10
-├── Maker.pretty/                   # Pasta nativa de footprints do KiCad
+├── config.json                     # Local preferences and paths
+├── Maker.kicad_sym                 # Consolidated library file read by KiCad
+├── Maker.pretty/                   # KiCad native footprints folder
 │   ├── MCU_RP2040_QFN56_RPI.kicad_mod
 │   └── IC_CH340G_SOIC16_WCH.kicad_mod
-├── symbols/                        # Arquivos individuais de símbolos (Git-friendly)
+├── symbols/                        # Individual symbols (Git-friendly)
 │   ├── MCU_RP2040_QFN56_RPI.kicad_sym
 │   └── IC_CH340G_SOIC16_WCH.kicad_sym
-└── 3d/                             # Arquivos de modelagem 3D vinculados
+└── 3d/                             # Associated 3D model files
     ├── MCU_RP2040_QFN56_RPI.wrl
     ├── MCU_RP2040_QFN56_RPI.step
     ├── IC_CH340G_SOIC16_WCH.wrl
@@ -182,13 +183,10 @@ Maker/
 
 ---
 
-## ❓ 6. Perguntas Frequentes (FAQ)
+## ❓ 6. FAQ
 
-### 1. Posso usar controle de versão (Git) nesta biblioteca?
-**Sim, absolutamente!** O KiFlux foi projetado com isso em mente. A pasta `symbols/` contém arquivos de símbolo individuais. O arquivo principal `Maker.kicad_sym` é reconstruído dinamicamente a partir deles. Você pode adicionar as pastas `symbols/`, `Maker.pretty/` e `3d/` ao Git. Recomenda-se ignorar o arquivo consolidado `Maker.kicad_sym` no seu `.gitignore` e rodar `kiflux --rebuild` ao clonar a biblioteca em outra máquina.
+### 1. Can I use Git version control on this library?
+**Yes, absolutely!** KiFlux was designed with Git in mind. Símbols are saved individually in `symbols/`, and the main file `Maker.kicad_sym` is rebuilt automatically. You can commit the `symbols/`, `Maker.pretty/` and `3d/` folders. It is recommended to add `Maker.kicad_sym` to your `.gitignore` and run `kiflux --rebuild` after cloning.
 
-### 2. Por que o nRF24 vira `IC` e o nRF52 vira `MCU`?
-O nRF24L01 é um transceptor de RF básico, enquanto o nRF52 é um microcontrolador programável completo (Cortex-M4). O motor analisa dinamicamente as palavras-chave do catálogo da LCSC. Como o nRF24L01 é classificado pela LCSC como *"RF Transceiver"*, o script inteligentemente o coloca como `IC`. Como o nRF52 é classificado como *"Microcontrollers"*, ele recebe o prefixo correto de `MCU`.
-
-### 3. O que acontece se eu atualizar meu KiCad para uma versão futura?
-Nada é quebrado. A biblioteca usa a sintaxe de arquivos S-expression padrão e universal do KiCad (versão 20231120+). A única coisa necessária é atualizar a localização da tabela global se você mudar de computador, o que pode ser feito instantaneamente rodando `kiflux directory /caminho/da/pasta`.
+### 2. What happens if I update my KiCad version?
+Nothing breaks. KiFlux uses the standard KiCad S-expression syntax (version 20231120+), which is highly forward-compatible. You only need to run `kiflux directory /path/to/library` if you change your PC or KiCad global paths.
