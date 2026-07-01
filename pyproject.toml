@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kiflux"
+version = "1.0.0"
+description = "KiFlux: Gerenciador inteligente de componentes e gerador de BOM/CPL para KiCad."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+dependencies = [
+    "easyeda2kicad>=1.0.0",
+]
+
+[project.scripts]
+kiflux = "kiflux.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
