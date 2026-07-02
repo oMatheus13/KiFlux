@@ -147,6 +147,17 @@ Manage your KiCad libraries directly from your terminal using the `kiflux` CLI t
     ```
     *Scans `.kicad_sch` and `.kicad_pcb` files and exports `BOM_JLCPCB.csv` and `CPL_JLCPCB.csv` formatted exactly for assembly machines.*
 
+*   **Component Recipe Kits (Prebuilt CDN Packages):**
+    ```bash
+    # List all available curated hardware kits
+    kiflux kit list
+    # Show components inside a kit and check their local install status
+    kiflux kit show master
+    # Download and install a kit instantly (in 2-3 seconds) from CDN
+    kiflux install master
+    ```
+    *Downloads pre-selected component collections (like `master`, `maker`, `0603`, `0402`, `rp2040`, `rp2350b`) instantly via HTTP, extracts them to your local directory, and merges them into your consolidated KiCad library. Safely falls back to individual EasyEDA API scraping if offline.*
+
 ---
 
 ### 🔍 Audit, Queries & Utilities

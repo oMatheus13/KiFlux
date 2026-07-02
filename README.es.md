@@ -145,7 +145,18 @@ Gestiona tus bibliotecas de KiCad directamente desde tu terminal utilizando el c
     # Indicando proyecto y una carpeta de salida diferente
     kiflux bom /ruta/al/proyecto /ruta/de/salida
     ```
-    *Analiza los archivos `.kicad_sch` y `.kicad_pcb` y genera `BOM_JLCPCB.csv` y `CPL_JLCPCB.csv` listos para las máquinas de montaje.*
+    *Analiza los archivos `.kicad_sch` y `.kicad_pcb` y genera `BOM_JLCPCB.csv` and `CPL_JLCPCB.csv` listos para las máquinas de montaje.*
+
+*   **Kits de Recetas de Componentes (Descarga Instantánea vía CDN):**
+    ```bash
+    # Lista todos los kits de hardware disponibles
+    kiflux kit list
+    # Muestra los componentes de un kit y si ya están instalados en tu computadora
+    kiflux kit show master
+    # Descarga e instala un kit completo en 2-3 segundos directo desde GitHub CDN
+    kiflux install master
+    ```
+    *Descarga colecciones de componentes preseleccionados (como `master`, `maker`, `0603`, `0402`, `rp2040`, `rp2350b`) de forma instantánea a través de HTTP, extrae los archivos localmente y los fusiona en tu biblioteca consolidada de KiCad. Cuenta con fallback automático de seguridad para descarga individual desde la API de EasyEDA si estás sin conexión.*
 
 ---
 

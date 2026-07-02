@@ -147,6 +147,17 @@ Todas as interações administrativas da biblioteca podem ser feitas de forma si
     ```
     *(Varre os arquivos .kicad_sch e .kicad_pcb no diretório do projeto e gera os arquivos BOM_JLCPCB.csv e CPL_JLCPCB.csv formatados exatamente no formato exigido pela JLCPCB para montagem no diretório de saída informado ou padrão).*
 
+*   **Kits de Receitas de Componentes (Download Instantâneo via CDN):**
+    ```bash
+    # Lista todos os kits de hardware disponíveis
+    kiflux kit list
+    # Mostra os componentes de um kit e se já estão instalados no seu computador
+    kiflux kit show master
+    # Baixa e instala um kit completo em 2-3 segundos direto do GitHub CDN
+    kiflux install master
+    ```
+    *Baixa coleções de componentes pré-selecionados (como `master`, `maker`, `0603`, `0402`, `rp2040`, `rp2350b`) de forma instantânea via HTTP, descompacta os arquivos localmente e os mescla na sua biblioteca consolidada no KiCad. Possui fallback de segurança automático para download individual via EasyEDA caso você esteja offline.*
+
 ---
 
 ### 🔍 Auditoria, Consultas e Utilitários

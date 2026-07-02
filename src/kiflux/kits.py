@@ -32,13 +32,13 @@ class ProgressBar:
         sys.stdout.write("\n")
         sys.stdout.flush()
 
+
 KITS = {
     "basic-passives-0402": {
         "description": "Essential SMT basic passives in 0402 package (1k, 10k, 100n, 1u, 10u)",
         "components": {
             "C1525": "Capacitor 0402 100nF 50V X7R (Samsung)",
             "C52923": "Capacitor 0402 1uF 50V X7R (Samsung)",
-            "C15529": "Capacitor 0402 10uF 6.3V X5R (Samsung)",
             "C25076": "Resistor 0402 10k 5% 62.5mW (UNI-ROYAL)",
             "C11702": "Resistor 0402 1k 5% 62.5mW (UNI-ROYAL)",
             "C25087": "Resistor 0402 100R 5% 62.5mW (UNI-ROYAL)"
@@ -62,10 +62,8 @@ KITS = {
             "C9002": "12MHz Crystal SMD 3225 10pF (YXC)",
             "C1525": "Capacitor 0402 100nF 50V X7R (Samsung)",
             "C52923": "Capacitor 0402 1uF 50V X7R (Samsung)",
-            "C15529": "Capacitor 0402 10uF 6.3V X5R (Samsung)",
             "C11702": "Resistor 0402 1k 5% 62.5mW (UNI-ROYAL)",
-            "C25076": "Resistor 0402 10k 5% 62.5mW (UNI-ROYAL)",
-            "C25111": "Resistor 0402 27R 5% 62.5mW for USB (UNI-ROYAL)"
+            "C25076": "Resistor 0402 10k 5% 62.5mW (UNI-ROYAL)"
         }
     },
     "rp2350b-support": {
@@ -76,10 +74,8 @@ KITS = {
             "C9002": "12MHz Crystal SMD 3225 10pF (YXC)",
             "C1525": "Capacitor 0402 100nF 50V X7R (Samsung)",
             "C52923": "Capacitor 0402 1uF 50V X7R (Samsung)",
-            "C15529": "Capacitor 0402 10uF 6.3V X5R (Samsung)",
             "C11702": "Resistor 0402 1k 5% 62.5mW (UNI-ROYAL)",
-            "C25076": "Resistor 0402 10k 5% 62.5mW (UNI-ROYAL)",
-            "C25111": "Resistor 0402 27R 5% 62.5mW for USB (UNI-ROYAL)"
+            "C25076": "Resistor 0402 10k 5% 62.5mW (UNI-ROYAL)"
         }
     },
     "maker-starter-kit": {
@@ -87,7 +83,6 @@ KITS = {
         "components": {
             "C1525": "Capacitor 0402 100nF 50V X7R (Samsung)",
             "C52923": "Capacitor 0402 1uF 50V X7R (Samsung)",
-            "C15529": "Capacitor 0402 10uF 6.3V X5R (Samsung)",
             "C14663": "Capacitor 0603 100nF 50V X7R (Samsung)",
             "C15849": "Capacitor 0603 1uF 50V X7R (Samsung)",
             "C19702": "Capacitor 0603 10uF 10V X7R (Samsung)",
@@ -103,7 +98,6 @@ KITS = {
             "C25746": "Resistor 0603 100R 5% 100mW (UNI-ROYAL)",
             "C26083": "Resistor 0603 0R 5% 100mW (UNI-ROYAL)",
             "C81598": "SS34 Schottky Diode 40V 3A SMA (Yangjie)",
-            "C34888": "1N4148 Switching Diode 100V 300mA SOD-323 (Jingheng)",
             "C8489": "2N7002 N-Channel MOSFET 60V 300mA SOT-23 (CJ)",
             "C20917": "AO3401 P-Channel MOSFET -30V -4A SOT-23 (AOS)",
             "C2286": "LED Red 0603 (Everlight)",
@@ -117,114 +111,56 @@ KITS = {
     "master-kiflux-catalog": {
         "description": "The Master KiFlux Catalog: Industry-standard curated production hardware components",
         "components": {
-            # MCUs
             "C2040": "Raspberry Pi RP2040 MCU (QFN-56)",
             "C42415655": "Raspberry Pi RP2350B MCU (QFN-80)",
             "C701342": "ESP32-WROOM-32E-N8 WiFi/BT Module (Espressif)",
             "C2913198": "ESP32-S3-WROOM-1-N8 Module (Espressif - compatible with N4/N8/N16R8)",
             "C82899": "ATTINY85-20SU 8-bit AVR MCU SOIC-8 (Microchip)",
-            "C98144": "STM32F103C8T6 ARM Cortex-M3 MCU LQFP-48 (STMicroelectronics)",
             "C347209": "STM32F411CEU6 ARM Cortex-M4 MCU UFQFPN-48 (STMicroelectronics)",
-            
-            # USB Connectors
             "C165948": "CONN USB Type-C Receptacle 16-pin Horizontal (Hualian)",
-            "C2978712": "CONN USB Type-C Receptacle 16-pin Vertical SMT (XKB)",
-            "C2765138": "CONN USB Type-C Male Plug SMT (XKB)",
             "C134092": "CONN Micro USB Type-B Female Shielded SMT (Molex)",
-            "C409240": "CONN Micro USB Type-B Female Vertical SMT (XKB)",
             "C136455": "CONN USB 2.0 Type-A Plug Right Angle TH (Molex)",
             "C5261": "CONN USB 2.0 Type-A Receptacle Female Horizontal TH (XKB)",
-            "C393963": "CONN USB 2.0 Type-A Receptacle Female Vertical TH (XKB)",
-            
-            # JST SH Connectors (1.0mm)
             "C160404": "CONN JST SH 4-pin Horizontal SMT P=1mm Qwiic (JST)",
-            "C171739": "CONN JST SH 4-pin Vertical SMT P=1mm Qwiic (JST)",
-            
-            # JST PH Connectors (2.0mm)
             "C173752": "CONN JST PH 2-pin Right Angle 2.00mm SMT (JST)",
-            "C27312": "CONN JST PH 2-pin Vertical 2.00mm SMT (JST)",
-            "C139797": "CONN JST PH 3-pin Right Angle 2.00mm SMT (JST)",
-            "C26217": "CONN JST PH 3-pin Vertical 2.00mm SMT (JST)",
-            "C160401": "CONN JST PH 4-pin Right Angle 2.00mm SMT (JST)",
-            "C26218": "CONN JST PH 4-pin Vertical 2.00mm SMT (JST)",
-            
-            # JST XH Connectors (2.5mm / 2.54mm)
-            "C16581": "CONN JST XH 2-pin Right Angle 2.50mm SMT (JST)",
-            "C157924": "CONN JST XH 2-pin Vertical 2.50mm TH (JST)",
-            "C318884": "CONN JST XH 3-pin Right Angle 2.50mm SMT (JST)",
-            "C157925": "CONN JST XH 3-pin Vertical 2.50mm TH (JST)",
-            "C16582": "CONN JST XH 4-pin Right Angle 2.50mm SMT (JST)",
-            "C157926": "CONN JST XH 4-pin Vertical 2.50mm TH (JST)",
-            
-            # Headers & Screw Terminals
-            "C22548": "CONN Header Male 1x40 2.54mm Straight (Burg)",
-            "C50983": "CONN Header Female 1x40 2.54mm Straight (Burg)",
-            "C84337": "CONN Terminal Block 2-position 5.08mm Blue (Xinya)",
-            
-            # Battery Charger & Protection ICs
+            "C139797": "Tactile Switch SMD 4.2x3.2mm (ALPS)",
             "C16581": "TP4056 Lithium Battery Charger IC ESOP-8 (Nanjing Microone)",
+            "C157924": "CONN JST XH 2-pin Vertical 2.50mm TH (JST)",
+            "C318884": "Tactile Switch SMD 5.2x5.2mm (HRO)",
+            "C157925": "CONN JST XH 3-pin Vertical 2.50mm TH (JST)",
+            "C157926": "CONN JST XH 4-pin Vertical 2.50mm TH (JST)",
+            "C22548": "CONN Header Male 1x40 2.54mm Straight (Burg)",
+            "C84337": "CONN Terminal Block 2-position 5.08mm Blue (Xinya)",
             "C351410": "DW01A Battery Protection IC SOT-23-6 (Fortune Semi)",
             "C2830320": "FS8205A Dual N-Channel MOSFET 20V 6A SOT-23-6 (Fortune Semi)",
-            
-            # Power Management & DC-DC Buck/Boost
             "C347376": "XC6206P332MR LDO Regulator 3.3V SOT-23 (UMW)",
             "C841192": "RT9080-33GJ5 LDO Regulator 3.3V 600mA TSOT-23-5 (Richtek)",
             "C6186": "AMS1117-5.0 LDO Regulator 5V 1A SOT-223 (AMS)",
             "C84817": "MT3608 Boost DC-DC Converter SOT-23-6 (Aerosemi)",
-            "C78028": "MP1584EN-LF-Z Buck Step-Down Converter SOIC-8 (MPS)",
-            
-            # Inductors & Ferrite Beads
             "C5189958": "CYA0630-10UH Shielded Power Inductor 10uH 4A (Sunlord)",
             "C168241": "Shielded Power Inductor 4.7uH 3.3A SMT (Sunlord)",
             "C168243": "Shielded Power Inductor 2.2uH 4A SMT (Sunlord)",
-            "C409241": "Ferrite Bead 120R 100MHz 2A 0603 (Murata)",
-            
-            # Diodes, Zeners & ESD Protection
             "C81598": "SS34 Schottky Diode 40V 3A SMA (Yangjie)",
             "C14992": "1N5819 Schottky Diode 40V 1A SOT-23 (CJ)",
-            "C192080": "BZX84C3V3 Zener Diode 3.3V SOT-23 (CJ)",
             "C192083": "BZX84C5V1 Zener Diode 5.1V SOT-23 (CJ)",
-            "C128564": "USBLC6-2SC6 TVS Diode ESD Protection SOT-23-6 (STMicroelectronics)",
-            "C34888": "1N4148 Switching Diode 100V 300mA SOD-323 (Jingheng)",
             "C82942": "MB6S Bridge Rectifier SOP-4 (Yangjie)",
-            
-            # Transistors & MOSFETs
             "C8489": "2N7002 N-Channel MOSFET 60V 300mA SOT-23 (CJ)",
             "C20917": "AO3401 P-Channel MOSFET -30V -4A SOT-23 (AOS)",
-            
-            # Logic & Shift Registers
-            "C96129": "TXS0108E Level Shifter 8-channel TSSOP-20 (TI)",
             "C11651": "MAX485 RS-485 Transceiver SOIC-8 (Maxim)",
-            
-            # Relays, Buttons & Controls
-            "C37330": "SRD-05VDC-SL-C Relay SPDT 5V 10A TH (Songle)",
             "C128553": "Tactile Push Button SMD 3x6x2.5mm (HRO)",
-            "C139797": "Tactile Switch SMD 4.2x3.2mm (ALPS)",
-            "C318884": "Tactile Switch SMD 5.2x5.2mm (HRO)",
             "C918854": "RKJXV122400R 2-Axis Analog Joystick with Switch (ALPS)",
             "C94599": "Active Buzzer 3V/5V SMD (LD)",
-            "C375782": "Display OLED I2C 0.96 inch 128x64 SSD1306 (Zhiyuan)",
             "C79401": "MAX16054AZT+T Push-Button On/Off Controller TSOT-23-6 (Analog Devices)",
             "C8239": "DS1307+ I2C Real Time Clock SOIC-8 (Maxim)",
             "C81458": "L9110S Dual Motor Driver SOP-8 (Guangdong Hottech)",
-            
-            # RF Antennas & Coaxial Connectors
             "C293767": "2.4GHz Ceramic Chip Antenna SMD 3.2x1.6mm (Yageo)",
-            "C126857": "CONN U.FL Coaxial RF Receptacle SMT P=2.00mm (Hirose)",
             "C8791": "RF nRF24L01P-R Transceiver 2.4GHz QFN-20 (Nordic)",
-            
-            # Crystals
             "C9002": "12MHz Crystal SMD 3225 10pF (YXC)",
             "C12668": "16MHz Crystal SMD 3225 9pF (YXC)",
             "C101438": "8MHz Crystal SMD 3225 20pF (YXC)",
-            "C384819": "24MHz Crystal SMD 3225 8pF (YXC)",
             "C32346": "32.768kHz Tuning Fork Crystal SMD 3215 12.5pF (YXC)",
-            
-            # Fuses
             "C70068": "PPTC Resettable Fuse 500mA 16V 1812 (Sart)",
             "C126818": "1206L110THYR PPTC Resettable Fuse 1206 1.1A 8V (Littelfuse)",
-            
-            # LEDs (Monocromáticos 0603 e 0402, RGB endereçáveis)
             "C2286": "LED Red 0603 (Everlight)",
             "C2296": "LED Green 0603 (Everlight)",
             "C2297": "LED Blue 0603 (Everlight)",
@@ -235,33 +171,20 @@ KITS = {
             "C965803": "LED Blue 0402 (Everlight)",
             "C965555": "WS2812B_2020 RGB NeoPixel LED 2.0x2.0mm (Worldsemi)",
             "C114586": "WS2812B_5050 RGB NeoPixel LED 5.0x5.0mm (Worldsemi)",
-            
-            # Capacitors (0402 MLCC)
             "C1525": "Capacitor 0402 100nF 50V X7R (Samsung)",
             "C52923": "Capacitor 0402 1uF 50V X7R (Samsung)",
-            "C15529": "Capacitor 0402 10uF 6.3V X5R (Samsung)",
             "C1547": "Capacitor 0402 22pF 50V C0G (Samsung)",
             "C1540": "Capacitor 0402 10nF 50V X7R (Samsung)",
             "C1531": "Capacitor 0402 100pF 50V C0G (Samsung)",
-            
-            # Capacitors (0603 MLCC & Aluminum SMD)
             "C14663": "Capacitor 0603 100nF 50V X7R (Samsung)",
             "C15849": "Capacitor 0603 1uF 50V X7R (Samsung)",
             "C19702": "Capacitor 0603 10uF 10V X7R (Samsung)",
             "C1612": "Capacitor 0603 22pF 50V C0G (Samsung)",
-            "C1605": "Capacitor 0603 10nF 50V X7R (Samsung)",
-            "C15886": "Capacitor 0603 100uF 6.3V X5R (Samsung)",
-            "C138760": "Capacitor Alum SMD 100uF 35V 6.3x7.7mm (Shenzhen Jinghe)",
-            "C132431": "Capacitor Alum SMD 470uF 16V 8x10.2mm (Shenzhen Jinghe)",
-            
-            # Resistors (0402)
             "C25076": "Resistor 0402 10k 5% 62.5mW (UNI-ROYAL)",
             "C11702": "Resistor 0402 1k 5% 62.5mW (UNI-ROYAL)",
             "C25091": "Resistor 0402 4.7k 5% 62.5mW (UNI-ROYAL)",
             "C25087": "Resistor 0402 100R 5% 62.5mW (UNI-ROYAL)",
             "C25126": "Resistor 0402 0R 5% 62.5mW (UNI-ROYAL)",
-            
-            # Resistors (0603)
             "C25804": "Resistor 0603 10k 5% 100mW (UNI-ROYAL)",
             "C25890": "Resistor 0603 1k 5% 100mW (UNI-ROYAL)",
             "C25867": "Resistor 0603 4.7k 5% 100mW (UNI-ROYAL)",
@@ -270,6 +193,7 @@ KITS = {
         }
     }
 }
+
 
 KIT_ALIASES = {
     "all": ["all"],
