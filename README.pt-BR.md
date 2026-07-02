@@ -95,6 +95,12 @@ Todas as interações administrativas da biblioteca podem ser feitas de forma si
     ```
     *Inicia o assistente de configuração no seu terminal. Ele perguntará onde você deseja guardar a biblioteca (padrão: `~/KiCad/KiFlux`) e registra-a globalmente no KiCad. Se você rodar qualquer comando de importação sem ter feito isso antes, o KiFlux oferecerá iniciar a configuração na hora.*
 
+*   **Atualização e Sincronização de toda a Biblioteca:**
+    ```bash
+    kiflux update
+    ```
+    *Varre todos os componentes locais registrados, baixa os metadados e arquivos 3D atualizados da API da LCSC e sugere renomeá-los caso seu nome atual divirja das heurísticas mais novas (perfeito para atualizar bibliotecas antigas para as novas convenções de nomenclatura).*
+
 *   **Importação Padrão (Nome Completo Sugerido):**
     ```bash
     kiflux C2040

@@ -95,6 +95,12 @@ Manage your KiCad libraries directly from your terminal using the `kiflux` CLI t
     ```
     *Starts the setup wizard in your terminal. It asks where you want to store your library (defaults to `~/KiCad/KiFlux`) and configures KiCad globally for you. If you run any import command without running this first, KiFlux will automatically ask to initialize.*
 
+*   **Library-Wide Auto Update & Sync:**
+    ```bash
+    kiflux update
+    ```
+    *Scans all registered local components, downloads the latest metadata/3D models from the LCSC API, and prompts to rename them if their current name deviates from the latest naming heuristics (perfect for updating old libraries to the new naming rules).*
+
 *   **Standard Import (Suggested Naming):**
     ```bash
     kiflux C2040
