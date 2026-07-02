@@ -175,7 +175,7 @@ KITS = {
             "C52923": "Capacitor 0402 1uF 50V X7R (Samsung)",
             "C1547": "Capacitor 0402 22pF 50V C0G (Samsung)",
             "C1540": "Capacitor 0402 10nF 50V X7R (Samsung)",
-            "C1531": "Capacitor 0402 100pF 50V C0G (Samsung)",
+            "C1531": "Capacitor 0402 2.2nF 50V X7R (FH)",
             "C14663": "Capacitor 0603 100nF 50V X7R (Samsung)",
             "C15849": "Capacitor 0603 1uF 50V X7R (Samsung)",
             "C19702": "Capacitor 0603 10uF 10V X7R (Samsung)",

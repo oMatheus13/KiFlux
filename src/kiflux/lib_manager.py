@@ -138,6 +138,32 @@ def get_friendly_value(comp_name):
         
     return comp_name
 
+def remove_property(content, prop_name):
+    pattern = r'\(property\s+"' + re.escape(prop_name) + r'"'
+    match = re.search(pattern, content)
+    if not match:
+        return content
+        
+    start_idx = match.start()
+    while start_idx > 0 and content[start_idx-1] in [' ', '\t', '\r', '\n']:
+        start_idx -= 1
+        
+    open_brackets = 0
+    end_idx = -1
+    for i in range(match.start(), len(content)):
+        if content[i] == '(':
+            open_brackets += 1
+        elif content[i] == ')':
+            open_brackets -= 1
+            if open_brackets == 0:
+                end_idx = i + 1
+                break
+                
+    if end_idx != -1:
+        return content[:start_idx] + content[end_idx:]
+        
+    return content
+
 def format_rich_description(comp_name, lcsc, jlc_info=None, temp_sym_content=None, manufacturer=None):
     tech_desc = ""
     if jlc_info and jlc_info.get("describe"):
@@ -266,13 +292,9 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
         content
     )
     
-    # Remove propriedades antigas
-    content = re.sub(r'\s*\(property\s+"ki_description"[\s\S]*?\n\s*\)', '', content)
-    content = re.sub(r'\s*\(property\s+"LCSC Part"[\s\S]*?\n\s*\)', '', content)
-    content = re.sub(r'\s*\(property\s+"JLCPCB Part #"\s*[\s\S]*?\n\s*\)', '', content)
-    content = re.sub(r'\s*\(property\s+"JLCPCB Stock"[\s\S]*?\n\s*\)', '', content)
-    content = re.sub(r'\s*\(property\s+"JLCPCB Prices"[\s\S]*?\n\s*\)', '', content)
-    content = re.sub(r'\s*\(property\s+"LCSC Qty"[\s\S]*?\n\s*\)', '', content)
+    # Remove propriedades antigas de forma robusta
+    for prop in ["ki_description", "LCSC Part", "JLCPCB Part #", "JLCPCB Stock", "JLCPCB Prices", "LCSC Qty"]:
+        content = remove_property(content, prop)
     
     rich_description = format_rich_description(comp_name, lcsc, jlc_info, content, manufacturer)
     
