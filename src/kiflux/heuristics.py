@@ -40,26 +40,37 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
             try:
                 l_val = float(dim_match.group(1))
                 w_val = float(dim_match.group(2))
-                # Se forem dimensões pequenas de chip SMD (ex: L3.2 W1.6), formata no padrão clássico (ex: 3216)
-                if l_val < 20 and w_val < 20:
-                    l_str = f"{int(l_val * 10)}"
-                    w_str = f"{int(w_val * 10)}"
-                    pkg_dims = f"{l_str}{w_str}"
+                
+                # Mapeia dimensões métricas pequenas comuns para os códigos imperiais padrão
+                if 0.8 <= l_val <= 1.2 and 0.4 <= w_val <= 0.7:
+                    pkg = "0402"
+                elif 1.4 <= l_val <= 1.8 and 0.6 <= w_val <= 0.9:
+                    pkg = "0603"
+                elif 1.8 <= l_val <= 2.2 and 1.1 <= w_val <= 1.4:
+                    pkg = "0805"
+                elif 3.0 <= l_val <= 3.4 and 1.4 <= w_val <= 1.8:
+                    pkg = "1206"
                 else:
-                    pkg_dims = f"L{dim_match.group(1)}W{dim_match.group(2)}".replace(".", "")
+                    if l_val < 20 and w_val < 20:
+                        l_str = f"{int(l_val * 10)}"
+                        w_str = f"{int(w_val * 10)}"
+                        pkg_dims = f"{l_str}{w_str}"
+                    else:
+                        pkg_dims = f"L{dim_match.group(1)}W{dim_match.group(2)}".replace(".", "")
+                        
+                    prefix = pkg_clean.split('_')[0]
+                    if prefix in ["ANT", "SMD", "CONN", "CRYSTAL", "LED", "TH", "PKG"]:
+                        if "SMD" in pkg_clean and prefix != "SMD":
+                            pkg = f"{prefix}_SMD_{pkg_dims}"
+                        elif "TH" in pkg_clean and prefix != "TH":
+                            pkg = f"{prefix}_TH_{pkg_dims}"
+                        else:
+                            pkg = f"{prefix}_{pkg_dims}" if prefix != "SMD" else f"SMD_{pkg_dims}"
+                    else:
+                        pkg = f"{prefix}_{pkg_dims}"
             except Exception:
                 pkg_dims = f"L{dim_match.group(1)}W{dim_match.group(2)}".replace(".", "")
-                
-            prefix = pkg_clean.split('_')[0]
-            if prefix in ["ANT", "SMD", "CONN", "CRYSTAL", "LED", "TH", "PKG"]:
-                if "SMD" in pkg_clean and prefix != "SMD":
-                    pkg = f"{prefix}_SMD_{pkg_dims}"
-                elif "TH" in pkg_clean and prefix != "TH":
-                    pkg = f"{prefix}_TH_{pkg_dims}"
-                else:
-                    pkg = f"{prefix}_{pkg_dims}" if prefix != "SMD" else f"SMD_{pkg_dims}"
-            else:
-                pkg = f"{prefix}_{pkg_dims}"
+                pkg = f"GENERIC_{pkg_dims}"
         else:
             # Se não tem dimensões, preserva a marcação de Through-Hole (TH) ou Surface-Mount (SMD)
             prefix = pkg_clean.split('_')[0]
@@ -93,19 +104,24 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     cap_value_pattern = r'^\d+(\.\d+)?\s*(P|N|U|µ|M|F)+F?$'
     res_value_pattern = r'^\d+(\.\d+)?\s*(R|K|M|OHM)+$'
     res_value_inline_pattern = r'^\d+[RKM]\d*$'
+    ind_value_pattern = r'^\d+(\.\d+)?\s*(N|U|µ|M)+H$'
 
     is_capacitor = False
     is_resistor = False
+    is_inductor = False
 
     # Primeiro tenta pelo Value direto
     if re.match(cap_value_pattern, val_clean):
         is_capacitor = True
     elif re.match(res_value_pattern, val_clean) or re.match(res_value_inline_pattern, val_clean):
         is_resistor = True
+    elif re.match(ind_value_pattern, val_clean):
+        is_inductor = True
     else:
         # Se o Value for um Part Number poluído, vasculha a descrição/keywords por valores físicos
         cap_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:PF|NF|UF|µF|MF|F))\b', metadata_text)
         res_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:R|K|M|OHM|OHMS|Ω|KΩ|MΩ|RΩ))\b', metadata_text)
+        ind_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:NH|UH|µH|MH|H))\b', metadata_text)
         
         if cap_desc_match and any(k in metadata_text for k in ["CAPACITOR", "CAPACITORS", "CAP"]):
             is_capacitor = True
@@ -113,6 +129,9 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
         elif res_desc_match and any(k in metadata_text for k in ["RESISTOR", "RESISTORS", "RES"]):
             is_resistor = True
             val_clean = res_desc_match.group(1)
+        elif ind_desc_match and any(k in metadata_text for k in ["INDUCTOR", "INDUCTORS", "IND", "CHOKE", "COIL", "BEAD"]):
+            is_inductor = True
+            val_clean = ind_desc_match.group(1)
 
     if is_capacitor:
         val = val_clean
@@ -129,6 +148,16 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
         val = val.replace("OHM", "").replace("R", "").replace("K", "k").replace("M", "m").replace("Ω", "")
         val = val.lower().strip()
         return f"R_{pkg}_{val}_{mfr}"
+        
+    if is_inductor:
+        val = val_clean
+        val = val.lower().strip()
+        pkg_formatted = pkg
+        if pkg_formatted.startswith("IND_"):
+            pkg_formatted = pkg_formatted[4:]
+        elif pkg_formatted == "IND":
+            pkg_formatted = "GENERIC"
+        return f"IND_{pkg_formatted}_{val}_{mfr}"
 
     category = "IC"
     mcu_prefixes = [

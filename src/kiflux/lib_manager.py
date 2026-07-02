@@ -116,6 +116,12 @@ def get_friendly_value(comp_name):
     if prefix == "C" and len(parts) >= 3:
         return parts[2]
         
+    # 3. Indutores: IND_<pkg>_<value>_<mfr> -> extrai <value> se for novo formato, senao extrai parts[1] (modelo)
+    if prefix == "IND" and len(parts) >= 3:
+        if len(parts) >= 4 and (parts[2].lower().endswith('h') or any(u in parts[2].lower() for u in ['nh', 'uh', 'mh'])):
+            return parts[2]
+        return parts[1]
+        
     # 3. Semicondutores, MCUs, CIs, cristais, displays, etc.
     # PREFIX_MODEL_FOOTPRINT_MANUFACTURER -> extrai MODEL (parts[1])
     if len(parts) >= 4:
