@@ -108,18 +108,21 @@ def get_friendly_value(comp_name):
         
     prefix = parts[0].upper()
     
-    # 1. Resistores: R_<pkg>_<value>_<mfr> -> extrai <value>
-    if prefix == "R" and len(parts) >= 3:
-        return parts[2]
+    # 1. Resistores, Capacitores e Indutores (Novo formato unificado de passivos)
+    # R_<pkg>_<value>_<mfr>, C_<pkg>_<value>_<mfr>, IND_<pkg>_<value>_<mfr>
+    # Junta as partes de parts[2:-1] usando o ponto decimal para remontar valores decimais exatos (ex: 2_7NH -> 2.7NH)
+    if prefix in ["R", "C", "IND"] and len(parts) >= 4:
+        if prefix == "IND":
+            val_parts = parts[2:-1]
+            val_str = ".".join(val_parts)
+            if val_str.lower().endswith('h') or any(u in val_str.lower() for u in ['nh', 'uh', 'mh']):
+                return val_str
+            return parts[1]
+            
+        return ".".join(parts[2:-1])
         
-    # 2. Capacitores: C_<pkg>_<value>_<mfr> -> extrai <value>
-    if prefix == "C" and len(parts) >= 3:
-        return parts[2]
-        
-    # 3. Indutores: IND_<pkg>_<value>_<mfr> -> extrai <value> se for novo formato, senao extrai parts[1] (modelo)
-    if prefix == "IND" and len(parts) >= 3:
-        if len(parts) >= 4 and (parts[2].lower().endswith('h') or any(u in parts[2].lower() for u in ['nh', 'uh', 'mh'])):
-            return parts[2]
+    # Se for resistores/capacitores de 3 partes (ex: R_10K_UNI)
+    if prefix in ["R", "C"] and len(parts) == 3:
         return parts[1]
         
     # 3. Semicondutores, MCUs, CIs, cristais, displays, etc.
@@ -151,6 +154,7 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
         
     orig_name = match.group(1)
     comp_name = clean_name(final_name)
+    value, manufacturer, package = extract_properties_from_temp(temp_dir)
     
     print(f"[*] Original Symbol: {orig_name} -> Final Name: {comp_name}")
     
@@ -171,13 +175,35 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
     )
     
     # Remove propriedades antigas
+    content = re.sub(r'\s*\(property\s+"ki_description"[\s\S]*?\n\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"LCSC Part"[\s\S]*?\n\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"JLCPCB Part #"\s*[\s\S]*?\n\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"JLCPCB Stock"[\s\S]*?\n\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"JLCPCB Prices"[\s\S]*?\n\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"LCSC Qty"[\s\S]*?\n\s*\)', '', content)
     
+    desc_parts = []
+    jlc_desc = jlc_info.get("describe") if jlc_info else None
+    if not jlc_desc:
+        desc_match = re.search(r'\(property\s+"ki_description"\s+"([^"]+)"', content)
+        if desc_match:
+            jlc_desc = desc_match.group(1)
+            
+    if jlc_desc:
+        desc_parts.append(jlc_desc.strip())
+        
+    if jlc_info:
+        lib_type = jlc_info.get("library_type", "Extended")
+        stock = jlc_info.get("stock", 0)
+        desc_parts.append(f"JLCPCB: {lib_type} (Stock: {stock})")
+        
+    desc_parts.append(f"Mfr: {manufacturer if manufacturer else 'GENERIC'}")
+    desc_parts.append(f"LCSC: {lcsc}")
+    
+    rich_description = " | ".join(desc_parts).replace('"', "'")
+    
     lcsc_properties = (
+        f'    (property "ki_description" "{rich_description}" (id 11) (at 0 0 0) (effects (font (size 1.27 1.27)) hide))\n'
         f'    (property "LCSC Part" "{lcsc}" (id 6) (at 0 0 0) (effects (font (size 1.27 1.27)) hide))\n'
         f'    (property "JLCPCB Part #" "{lcsc}" (id 7) (at 0 0 0) (effects (font (size 1.27 1.27)) hide))\n'
     )
