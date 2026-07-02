@@ -559,20 +559,61 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
         "NRF5", "SAMD", "LPC1", "LPC8", "LPC5", "MK2", "MKL", "MSP430", "TMS320", "PIC1", "CH5"
     ]
     
-    if any(k in metadata_text for k in ["MICROCONTROLLER", "MCU", "PROCESSOR"]) or any(mcu in val_clean for mcu in mcu_prefixes):
+    # 1. Microcontrollers, Processors & FPGAs
+    if any(k in metadata_text for k in ["MICROCONTROLLER", "MCU", "PROCESSOR", "FPGA", "CPLD"]) or any(mcu in val_clean for mcu in mcu_prefixes):
         category = "MCU"
-    elif any(k in metadata_text for k in ["REGULATOR", "LDO", "VOLTAGE REFERENCE"]) or "AMS1117" in val_clean or "LM78" in val_clean:
+        
+    # 2. Regulators, LDOs, PMICs, Buck-Boost & Chargers
+    elif any(k in metadata_text for k in ["REGULATOR", "LDO", "VOLTAGE REFERENCE", "PMIC", "BUCK", "BOOST", "CONVERTER", "CHARGER", "DC-DC", "DC/DC"]) or "AMS1117" in val_clean or "LM78" in val_clean:
         category = "REG"
-    elif any(k in metadata_text for k in ["DIODE", "RECTIFIER", "ZENER"]) or val_clean.startswith("1N4"):
+        
+    # 3. Diodes, Rectifiers, Zener & ESD Protection
+    elif any(k in metadata_text for k in ["DIODE", "RECTIFIER", "ZENER", "TVS", "ESD PROTECTION"]) or val_clean.startswith("1N4"):
         category = "DIODE"
+        
+    # 4. Transistors, MOSFETs, BJTs & IGBTs
     elif any(k in metadata_text for k in ["TRANSISTOR", "MOSFET", "IGBT", "BJT"]):
         category = "TRANS"
+        
+    # 5. Connectors, Headers, USBs & Terminals
     elif any(k in metadata_text for k in ["CONNECTOR", "USB", "HEADER", "JACK", "PLUG", "SOCKET", "TERMINAL", "RECEPTACLE"]):
         category = "CONN"
+        
+    # 6. Crystals, Resonators & Oscillators
     elif any(k in metadata_text for k in ["CRYSTAL", "OSCILLATOR", "RESONATOR"]):
         category = "XTAL"
-    elif "ANTENNA" in metadata_text or "ANT3216" in val_clean:
+        
+    # 7. Chip & RF Antennas
+    elif "ANTENNA" in metadata_text or val_clean.startswith("ANT"):
         category = "ANT"
+        
+    # 8. Memories (Flash, EEPROM, SRAM, SDRAM)
+    elif any(k in metadata_text for k in ["FLASH", "EEPROM", "SRAM", "SDRAM", "DRAM", "MEMOR"]):
+        category = "MEM"
+        
+    # 9. Sensors (Temp, Humidity, Accelerometer, Thermistor)
+    elif any(k in metadata_text for k in ["SENSOR", "ACCELEROMETER", "GYROSCOPE", "THERMISTOR", "HUMIDITY SENSOR", "PRESSURE SENSOR"]):
+        category = "SENS"
+        
+    # 10. Switches, Tactile Buttons & Slides
+    elif any(k in metadata_text for k in ["SWITCH", "BUTTON", "TACTILE"]):
+        category = "SW"
+        
+    # 11. Optocouplers & Isolators
+    elif any(k in metadata_text for k in ["OPTOCOUPLER", "OPTOISOLATOR", "ISOLATOR", "DIGITAL ISOLATOR"]):
+        category = "OPTO"
+        
+    # 12. Fuses, Varistors & Resettable Protections
+    elif any(k in metadata_text for k in ["FUSE", "VARISTOR", "PPTC", "RESETTABLE FUSE"]):
+        category = "FUSE"
+        
+    # 13. Displays (OLED, LCD, TFT, 7-Segment)
+    elif any(k in metadata_text for k in ["DISPLAY", "OLED", "LCD", "TFT", "7-SEGMENT"]):
+        category = "DISP"
+        
+    # 14. Inductors, Chokes, Transformers & Ferrite Beads
+    elif any(k in metadata_text for k in ["INDUCTOR", "CHOKE", "TRANSFORMER", "FERRITE BEAD", "FERRITE CHOKE"]):
+        category = "IND"
         
     model = clean_name(val_clean)
     return f"{category}_{model}_{pkg}_{mfr}"
