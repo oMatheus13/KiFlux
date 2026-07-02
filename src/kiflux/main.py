@@ -150,6 +150,7 @@ def parse_args():
     
     # Inicialização
     parser.add_argument("--init", action="store_true", help="Run the guided interactive setup helper for KiFlux.")
+    parser.add_argument("--update-all", action="store_true", help="Updates all library components from LCSC API and applies new naming heuristics.")
     
     # Exportação de BOM e CPL
     parser.add_argument("--bom", nargs="?", const=".", help="Generate BOM and CPL files for the project in the specified path (defaults to current folder).")
@@ -1034,6 +1035,77 @@ def check_library():
         print("[!] Please address the issues listed above to avoid manufacturing defects.")
     print()
 
+def update_all_components():
+    print(f"\n=== Starting Library-Wide Update ===")
+    if not os.path.exists(SYM_INDIVIDUAL_DIR):
+        print("No components registered in the library.")
+        return
+        
+    files = sorted([f for f in os.listdir(SYM_INDIVIDUAL_DIR) if f.endswith(".kicad_sym")])
+    if not files:
+        print("No components registered in the library.")
+        return
+        
+    print(f"Found {len(files)} components to check.\n")
+    updated_count = 0
+    
+    for filename in files:
+        comp_name = filename.replace(".kicad_sym", "")
+        filepath = os.path.join(SYM_INDIVIDUAL_DIR, filename)
+        
+        lcsc = ""
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+            lcsc_match = re.search(r'\(property\s+"LCSC Part"\s+"([^"]+)"', content)
+            if lcsc_match:
+                lcsc = lcsc_match.group(1).upper().strip()
+        except Exception:
+            pass
+            
+        if not lcsc:
+            print(f"[~] Skipping '{comp_name}' (No LCSC Part ID found in metadata)")
+            continue
+            
+        print(f"[*] Checking '{comp_name}' (LCSC: {lcsc})...")
+        try:
+            run_easyeda2kicad(lcsc)
+            value, manufacturer, package = extract_properties_from_temp()
+            if not value:
+                print(f"  [!] Failed to fetch metadata for LCSC {lcsc} (skipping)")
+                continue
+                
+            temp_sym_path = os.path.join(TEMP_DIR, "Maker.kicad_sym")
+            temp_sym_content = ""
+            if os.path.exists(temp_sym_path):
+                with open(temp_sym_path, "r", encoding="utf-8") as f:
+                    temp_sym_content = f.read()
+                    
+            suggested_name = generate_standardized_name(value, manufacturer, package, temp_sym_content)
+            
+            if suggested_name == comp_name:
+                print(f"  [✓] Component is already up-to-date and correctly named: '{comp_name}'")
+                process_footprint(lcsc, comp_name, comp_name)
+                process_3d(comp_name, comp_name)
+            else:
+                print(f"  [!] Convention change detected! Current: '{comp_name}' -> Suggested: '{suggested_name}'")
+                confirm = input(f"  Confirm rename and update to '{suggested_name}'? [S(yes) / n(no)]: ").strip().lower()
+                if confirm in ['', 's', 'yes']:
+                    orig_fp_name = process_footprint(lcsc, suggested_name, comp_name)
+                    process_3d(suggested_name, orig_fp_name)
+                    rename_component(comp_name, suggested_name)
+                    updated_count += 1
+                else:
+                    print("  [~] Update skipped by user.")
+        except Exception as e:
+            print(f"  [!] Error checking '{comp_name}': {e}")
+            
+    if os.path.exists(TEMP_DIR):
+        shutil.rmtree(TEMP_DIR)
+        
+    rebuild_consolidated_library()
+    print(f"\n[+] Library-wide update completed! {updated_count} component(s) updated/renamed.\n")
+
 def set_library_path(new_path):
     new_path = os.path.abspath(os.path.expanduser(new_path))
     print(f"[*] Updating library root to: {new_path}")
@@ -1339,6 +1411,9 @@ def main():
                 args.bom = "."
                 args.bom_output = None
                 args.positional_args = []
+        elif cmd == "update" or cmd == "upgrade":
+            args.update_all = True
+            args.positional_args = []
                 
     if args.init:
         init_kiflux(force=True)
@@ -1384,6 +1459,10 @@ def main():
         
     if args.datasheet:
         open_datasheet(args.datasheet)
+        sys.exit(0)
+        
+    if args.update_all:
+        update_all_components()
         sys.exit(0)
         
     if args.check:
