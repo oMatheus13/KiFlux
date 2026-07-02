@@ -433,16 +433,39 @@ def install_kit(name, paths):
     start_time = time.time()
     success_count = 0
     total = len(kit["components"])
+    
+    # Carrega os componentes já existentes na biblioteca consolidada
+    existing_lcscs = set()
+    sym_file = paths.sym_lib_file
+    if os.path.exists(sym_file):
+        try:
+            with open(sym_file, "r", encoding="utf-8") as f:
+                content = f.read()
+                import re
+                for match in re.findall(r'"LCSC Part"\s+"(C\d+)"', content):
+                    existing_lcscs.add(match)
+        except Exception:
+            pass
+            
     pbar = ProgressBar(total, prefix=f"Kit {resolved_name}")
     pbar.update(0, "")
     
     failed_imports = []
     
+    # Mantém o controle de quantos novos downloads reais foram feitos para saber se precisamos dar cooldown
+    network_requests_count = 0
+    
     for idx, lcsc in enumerate(kit["components"].keys(), 1):
+        if lcsc in existing_lcscs:
+            success_count += 1
+            pbar.update(idx, lcsc)
+            continue
+            
         is_passive = lcsc in ["C1525", "C52923", "C15529", "C14663", "C15849", "C19702", "C1612", "C25076", "C11702", "C25091", "C25087", "C25126", "C25804", "C25890", "C25867", "C25746", "C26083"]
-        if idx > 1 and not is_passive:
+        if network_requests_count > 0 and not is_passive:
             time.sleep(1.0)
             
+        network_requests_count += 1
         f_buf = io.StringIO()
         with contextlib.redirect_stdout(f_buf), contextlib.redirect_stderr(f_buf):
             success = import_single_component(lcsc, paths=paths, temp_dir=TEMP_DIR, auto_confirm=True)
