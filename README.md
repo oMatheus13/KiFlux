@@ -206,9 +206,14 @@ KiFlux/
 
 ---
 
-## 📄 7. License
+## 📄 7. License & Credits
 
 This project is open-source and licensed under the **MIT License**. Feel free to use, modify, and distribute it! See the [LICENSE](LICENSE) file for details.
+
+### 🌟 Third-Party Credits (3D Models)
+The generic passive 3D models (for resistors and capacitors in 0402, 0603, 0805, and 1206 packages) distributed within this project are sourced from the official **KiCad Library Team**. They are licensed under the **Creative Commons CC-BY-SA 4.0 License** with the *KiCad EDA Exception* (permitting their use in commercial layouts without forcing open-source on the PCB design). 
+
+We are deeply grateful to the KiCad community developers for their high-fidelity physical design resources!
 
 ---
 
