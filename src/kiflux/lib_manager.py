@@ -286,6 +286,39 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
         content
     )
     
+    # Normaliza a letra de referencia correta do KiCad (evita designators fixos numericos como '1' ou '12')
+    prefix_ref = comp_name.split("_")[0].upper()
+    ref_map = {
+        "R": "R",
+        "C": "C",
+        "IND": "L",
+        "MCU": "U",
+        "REG": "U",
+        "IC": "U",
+        "XTAL": "Y",
+        "CONN": "J",
+        "DIODE": "D",
+        "TRANS": "Q",
+        "BUZZ": "LS",
+        "BAT": "U",
+        "RF": "U",
+        "MEM": "U"
+    }
+    target_ref = ref_map.get(prefix_ref, "U")
+    
+    # Substitui em estilo inline
+    content = re.sub(
+        r'\(\s*property\s+"Reference"\s+"[^"]+"',
+        f'(property "Reference" "{target_ref}"',
+        content
+    )
+    # Substitui em estilo multi-line
+    content = re.sub(
+        r'\(\s*property\s*\n\s*"Reference"\s*\n\s*"[^"]+"',
+        f'(property\n      "Reference"\n      "{target_ref}"',
+        content
+    )
+    
     content = re.sub(
         r'(\(property\s+"Footprint"\s+)"[^"]+"',
         f'\\1"{paths.name}:{comp_name}"',
