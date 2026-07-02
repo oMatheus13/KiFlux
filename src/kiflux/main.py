@@ -614,6 +614,30 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     # 14. Inductors, Chokes, Transformers & Ferrite Beads
     elif any(k in metadata_text for k in ["INDUCTOR", "CHOKE", "TRANSFORMER", "FERRITE BEAD", "FERRITE CHOKE"]):
         category = "IND"
+
+    # 15. LEDs, RGBs and Neopixels (ignoring drivers)
+    elif any(k in metadata_text for k in ["LED", "RGB", "WS2812", "NEOPIXEL"]) and not any(k in metadata_text for k in ["DRIVER", "CONTROLLER"]):
+        category = "LED"
+
+    # 16. Relays
+    elif "RELAY" in metadata_text:
+        category = "RELAY"
+
+    # 17. Batteries and Battery Holders
+    elif any(k in metadata_text for k in ["BATTERY", "BATTERY HOLDER", "COIN CELL"]):
+        category = "BAT"
+
+    # 18. Buzzers and Speakers
+    elif any(k in metadata_text for k in ["BUZZER", "SPEAKER", "AUDIO TRANSDUCER"]):
+        category = "BUZZ"
+
+    # 19. Potentiometers and Trimpots
+    elif any(k in metadata_text for k in ["POTENTIOMETER", "TRIMPOT", "VARIABLE RESISTOR"]):
+        category = "POT"
+
+    # 20. Modules (Wireless, Wi-Fi, Bluetooth, LoRa, etc.)
+    elif any(k in metadata_text for k in ["WIFI MODULE", "BLUETOOTH MODULE", "RF MODULE", "TRANSCEIVER MODULE", "LORA MODULE", "MODULE"]):
+        category = "MODULE"
         
     model = clean_name(val_clean)
     return f"{category}_{model}_{pkg}_{mfr}"
