@@ -140,33 +140,33 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     if any(k in metadata_text for k in ["MICROCONTROLLER", "MCU", "PROCESSOR", "FPGA", "CPLD"]) or any(mcu in val_clean for mcu in mcu_prefixes):
         category = "MCU"
         
-    # 2. Regulators, LDOs, PMICs, Buck-Boost & Chargers
-    elif any(k in metadata_text for k in ["REGULATOR", "LDO", "VOLTAGE REFERENCE", "PMIC", "BUCK", "BOOST", "CONVERTER", "CHARGER", "DC-DC", "DC/DC"]) or "AMS1117" in val_clean or "LM78" in val_clean:
+    # 2. Memories (Flash, EEPROM, SRAM, SDRAM)
+    elif any(k in metadata_text for k in ["FLASH", "EEPROM", "SRAM", "SDRAM", "DRAM", "MEMOR"]):
+        category = "MEM"
+        
+    # 3. Regulators, LDOs, PMICs, Buck-Boost & Chargers
+    elif any(k in metadata_text for k in ["REGULATOR", "LDO", "VOLTAGE REFERENCE", "PMIC", "BUCK CONVERTER", "BOOST CONVERTER", "POWER CONVERTER", "CHARGER", "DC-DC", "DC/DC"]) or "AMS1117" in val_clean or "LM78" in val_clean:
         category = "REG"
         
-    # 3. Diodes, Rectifiers, Zener & ESD Protection
+    # 4. Diodes, Rectifiers, Zener & ESD Protection
     elif any(k in metadata_text for k in ["DIODE", "RECTIFIER", "ZENER", "TVS", "ESD PROTECTION"]) or val_clean.startswith("1N4"):
         category = "DIODE"
         
-    # 4. Transistors, MOSFETs, BJTs & IGBTs
+    # 5. Transistors, MOSFETs, BJTs & IGBTs
     elif any(k in metadata_text for k in ["TRANSISTOR", "MOSFET", "IGBT", "BJT"]):
         category = "TRANS"
         
-    # 5. Connectors, Headers, USBs & Terminals
+    # 6. Connectors, Headers, USBs & Terminals
     elif any(k in metadata_text for k in ["CONNECTOR", "USB", "HEADER", "JACK", "PLUG", "SOCKET", "TERMINAL", "RECEPTACLE"]):
         category = "CONN"
         
-    # 6. Crystals, Resonators & Oscillators
+    # 7. Crystals, Resonators & Oscillators
     elif any(k in metadata_text for k in ["CRYSTAL", "OSCILLATOR", "RESONATOR"]):
         category = "XTAL"
         
-    # 7. Chip & RF Antennas
+    # 8. Chip & RF Antennas
     elif "ANTENNA" in metadata_text or val_clean.startswith("ANT"):
         category = "ANT"
-        
-    # 8. Memories (Flash, EEPROM, SRAM, SDRAM)
-    elif any(k in metadata_text for k in ["FLASH", "EEPROM", "SRAM", "SDRAM", "DRAM", "MEMOR"]):
-        category = "MEM"
         
     # 9. Sensors (Temp, Humidity, Accelerometer, Thermistor)
     elif any(k in metadata_text for k in ["SENSOR", "ACCELEROMETER", "GYROSCOPE", "THERMISTOR", "HUMIDITY SENSOR", "PRESSURE SENSOR"]):
