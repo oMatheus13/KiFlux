@@ -101,7 +101,7 @@ def search_jlcpcb_components(keyword, page_size=20, part_type=None):
         with urllib.request.urlopen(req, timeout=10) as response:
             raw = json.loads(response.read().decode("utf-8"))
             
-        items = raw.get("data", {}).get("componentPageInfo", {}).get("list", [])
+        items = raw.get("data", {}).get("componentPageInfo", {}).get("list") or []
         results = []
         for item in items:
             prices = item.get("componentPrices") or []
