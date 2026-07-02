@@ -101,6 +101,34 @@ def extract_all_symbol_blocks(content):
             
     return symbols
 
+def get_friendly_value(comp_name):
+    parts = comp_name.split("_")
+    if not parts:
+        return comp_name
+        
+    prefix = parts[0].upper()
+    
+    # 1. Resistores: R_<pkg>_<value>_<mfr> -> extrai <value>
+    if prefix == "R" and len(parts) >= 3:
+        return parts[2]
+        
+    # 2. Capacitores: C_<pkg>_<value>_<mfr> -> extrai <value>
+    if prefix == "C" and len(parts) >= 3:
+        return parts[2]
+        
+    # 3. Semicondutores, MCUs, CIs, cristais, displays, etc.
+    # PREFIX_MODEL_FOOTPRINT_MANUFACTURER -> extrai MODEL (parts[1])
+    if len(parts) >= 4:
+        return parts[1]
+        
+    if len(parts) == 3:
+        return parts[1]
+        
+    if len(parts) > 1 and parts[0].isupper() and len(parts[0]) <= 5:
+        return parts[1]
+        
+    return comp_name
+
 def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
     temp_sym_path = os.path.join(temp_dir, "Maker.kicad_sym")
     if not os.path.exists(temp_sym_path):
@@ -126,7 +154,7 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
     
     content = re.sub(
         r'(\(property\s+"Value"\s+)"[^"]+"',
-        f'\\1"{comp_name}"',
+        f'\\1"{get_friendly_value(comp_name)}"',
         content
     )
     
@@ -564,7 +592,7 @@ def rename_component(old_name, new_name, paths):
         
         content = re.sub(
             r'(\(property\s+"Value"\s+)"[^"]+"',
-            f'\\1"{new_name}"',
+            f'\\1"{get_friendly_value(new_name)}"',
             content
         )
         
