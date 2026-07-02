@@ -505,7 +505,44 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     if pkg_match:
         pkg = pkg_match.group(1).replace("_", "")
     else:
-        pkg = re.sub(r'[^A-Z0-9]', '', pkg_clean.split('_')[0])
+        # Tenta extrair dimensões físicas (ex: L3.2-W1.6 ou L7.0-W7.0) comuns no EasyEDA
+        dim_match = re.search(r'L(\d+\.?\d*)_W(\d+\.?\d*)', pkg_clean)
+        if dim_match:
+            try:
+                l_val = float(dim_match.group(1))
+                w_val = float(dim_match.group(2))
+                # Se forem dimensões pequenas de chip SMD (ex: L3.2 W1.6), formata no padrão clássico (ex: 3216)
+                if l_val < 20 and w_val < 20:
+                    l_str = f"{int(l_val * 10)}"
+                    w_str = f"{int(w_val * 10)}"
+                    pkg_dims = f"{l_str}{w_str}"
+                else:
+                    pkg_dims = f"L{dim_match.group(1)}W{dim_match.group(2)}".replace(".", "")
+            except Exception:
+                pkg_dims = f"L{dim_match.group(1)}W{dim_match.group(2)}".replace(".", "")
+                
+            prefix = pkg_clean.split('_')[0]
+            if prefix in ["ANT", "SMD", "CONN", "CRYSTAL", "LED", "TH", "PKG"]:
+                if "SMD" in pkg_clean and prefix != "SMD":
+                    pkg = f"{prefix}_SMD_{pkg_dims}"
+                elif "TH" in pkg_clean and prefix != "TH":
+                    pkg = f"{prefix}_TH_{pkg_dims}"
+                else:
+                    pkg = f"{prefix}_{pkg_dims}" if prefix != "SMD" else f"SMD_{pkg_dims}"
+            else:
+                pkg = f"{prefix}_{pkg_dims}"
+        else:
+            # Se não tem dimensões, preserva a marcação de Through-Hole (TH) ou Surface-Mount (SMD)
+            prefix = pkg_clean.split('_')[0]
+            if "TH" in pkg_clean and "TH" not in prefix:
+                pkg = f"{prefix}_TH"
+            elif "SMD" in pkg_clean and "SMD" not in prefix:
+                pkg = f"{prefix}_SMD"
+            else:
+                pkg = prefix
+                
+        # Remove caracteres indesejados mantendo sublinhados
+        pkg = re.sub(r'[^A-Z0-9_]', '', pkg)
         if not pkg:
             pkg = "GENERIC"
 
