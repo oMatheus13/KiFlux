@@ -138,6 +138,98 @@ def get_friendly_value(comp_name):
         
     return comp_name
 
+def format_rich_description(comp_name, lcsc, jlc_info=None, temp_sym_content=None, manufacturer=None):
+    tech_desc = ""
+    if jlc_info and jlc_info.get("describe"):
+        tech_desc = jlc_info.get("describe")
+    elif temp_sym_content:
+        desc_match = re.search(r'\(property\s+"ki_description"\s+"([^"]+)"', temp_sym_content)
+        if desc_match:
+            tech_desc = desc_match.group(1)
+            if " | " in tech_desc:
+                tech_desc = tech_desc.split(" | ")[0]
+                
+    tech_desc = tech_desc.strip()
+    
+    parts = comp_name.split("_")
+    prefix = parts[0].upper()
+    friendly_val = get_friendly_value(comp_name)
+    
+    if not tech_desc:
+        if prefix == "R":
+            tech_desc = f"{friendly_val} Resistor"
+        elif prefix == "C":
+            tech_desc = f"{friendly_val} Capacitor"
+        elif prefix == "IND":
+            tech_desc = f"{friendly_val} Inductor"
+        elif prefix == "MCU":
+            tech_desc = f"Microcontroller {friendly_val}"
+        elif prefix == "REG":
+            tech_desc = f"Voltage Regulator {friendly_val}"
+        elif prefix == "CONN":
+            tech_desc = f"Connector {friendly_val}"
+        elif prefix == "DIODE":
+            tech_desc = f"Diode {friendly_val}"
+        elif prefix == "TRANS":
+            tech_desc = f"Transistor {friendly_val}"
+        elif prefix == "XTAL":
+            tech_desc = f"Crystal Oscillator {friendly_val}"
+        elif prefix == "MEM":
+            tech_desc = f"Flash Memory {friendly_val}"
+        else:
+            tech_desc = f"Component {friendly_val}"
+            
+    # Normaliza símbolos de eletrônica clássica
+    # uF/uf/uF -> µF
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*[uU]F\b', r'\1µF', tech_desc)
+    # pF/pf/pF -> pF
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*[pP]F\b', r'\1pF', tech_desc)
+    # nF/nf/nF -> nF
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*[nN]F\b', r'\1nF', tech_desc)
+    # nH/nh/nH -> nH
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*[nN]H\b', r'\1nH', tech_desc)
+    # uH/uh/uH -> µH
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*([uU]|µ)H\b', r'\1µH', tech_desc)
+    # mH/mh/mH -> mH
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*[mM]H\b', r'\1mH', tech_desc)
+    
+    # +- ou +/- -> ±
+    tech_desc = tech_desc.replace("+/-", "±").replace("+-", "±")
+    
+    # ohm / Kohm / Mohm -> Ω / kΩ / MΩ
+    tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*[kK]?[oO]hms?\b', r'\1Ω', tech_desc)
+    tech_desc = tech_desc.replace("KΩ", "kΩ").replace("kΩ", "kΩ").replace("MΩ", "MΩ")
+    
+    # Trata resistores no KiFlux (ex: 10K -> 10kΩ)
+    if prefix == "R":
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*K\b', r'\1kΩ', tech_desc)
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*M\b', r'\1MΩ', tech_desc)
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*R\b', r'\1Ω', tech_desc)
+        
+    # Trata capacitores no KiFlux (ex: 100N -> 100nF)
+    if prefix == "C":
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*N\b', r'\1nF', tech_desc)
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*U\b', r'\1µF', tech_desc)
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*P\b', r'\1pF', tech_desc)
+        
+    # Trata indutores (ex: 2.7NH -> 2.7nH)
+    if prefix == "IND":
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*NH\b', r'\1nH', tech_desc)
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*UH\b', r'\1µH', tech_desc)
+        tech_desc = re.sub(r'\b(\d+(?:\.\d+)?)\s*MH\b', r'\1mH', tech_desc)
+        
+    desc_parts = [tech_desc]
+    
+    if jlc_info:
+        lib_type = jlc_info.get("library_type", "Extended")
+        stock = jlc_info.get("stock", 0)
+        desc_parts.append(f"JLCPCB: {lib_type} (Stock: {stock})")
+        
+    desc_parts.append(f"Mfr: {manufacturer if manufacturer else 'GENERIC'}")
+    desc_parts.append(f"LCSC: {lcsc}")
+    
+    return " | ".join(desc_parts).replace('"', "'")
+
 def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
     temp_sym_path = os.path.join(temp_dir, "Maker.kicad_sym")
     if not os.path.exists(temp_sym_path):
@@ -160,7 +252,7 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
     
     content = content.replace(f'(symbol "{orig_name}"', f'(symbol "{comp_name}"')
     content = re.sub(r'\(symbol "' + re.escape(orig_name) + r'(_\d+_\d+)"', r'(symbol "' + comp_name + r'\1"', content)
-    content = re.sub(r'\(symbol "' + re.escape(orig_name) + r'(_\d+)"', r'(symbol "' + comp_name + r'\1"', content)
+    content = re.sub(r'\(symbol "' + re.escape(orig_name) + r'(_\d+)"', r'(symbol "' + new_name + r'\1"' if 'new_name' in locals() else r'(symbol "' + comp_name + r'\1"', content)
     
     content = re.sub(
         r'(\(property\s+"Value"\s+)"[^"]+"',
@@ -182,25 +274,7 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
     content = re.sub(r'\s*\(property\s+"JLCPCB Prices"[\s\S]*?\n\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"LCSC Qty"[\s\S]*?\n\s*\)', '', content)
     
-    desc_parts = []
-    jlc_desc = jlc_info.get("describe") if jlc_info else None
-    if not jlc_desc:
-        desc_match = re.search(r'\(property\s+"ki_description"\s+"([^"]+)"', content)
-        if desc_match:
-            jlc_desc = desc_match.group(1)
-            
-    if jlc_desc:
-        desc_parts.append(jlc_desc.strip())
-        
-    if jlc_info:
-        lib_type = jlc_info.get("library_type", "Extended")
-        stock = jlc_info.get("stock", 0)
-        desc_parts.append(f"JLCPCB: {lib_type} (Stock: {stock})")
-        
-    desc_parts.append(f"Mfr: {manufacturer if manufacturer else 'GENERIC'}")
-    desc_parts.append(f"LCSC: {lcsc}")
-    
-    rich_description = " | ".join(desc_parts).replace('"', "'")
+    rich_description = format_rich_description(comp_name, lcsc, jlc_info, content, manufacturer)
     
     lcsc_properties = (
         f'    (property "ki_description" "{rich_description}" (id 11) (at 0 0 0) (effects (font (size 1.27 1.27)) hide))\n'
