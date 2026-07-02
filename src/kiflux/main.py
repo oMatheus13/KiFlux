@@ -567,6 +567,12 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
         category = "DIODE"
     elif any(k in metadata_text for k in ["TRANSISTOR", "MOSFET", "IGBT", "BJT"]):
         category = "TRANS"
+    elif any(k in metadata_text for k in ["CONNECTOR", "USB", "HEADER", "JACK", "PLUG", "SOCKET", "TERMINAL", "RECEPTACLE"]):
+        category = "CONN"
+    elif any(k in metadata_text for k in ["CRYSTAL", "OSCILLATOR", "RESONATOR"]):
+        category = "XTAL"
+    elif "ANTENNA" in metadata_text or "ANT3216" in val_clean:
+        category = "ANT"
         
     model = clean_name(val_clean)
     return f"{category}_{model}_{pkg}_{mfr}"
