@@ -638,6 +638,34 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     # 20. Modules (Wireless, Wi-Fi, Bluetooth, LoRa, etc.)
     elif any(k in metadata_text for k in ["WIFI MODULE", "BLUETOOTH MODULE", "RF MODULE", "TRANSCEIVER MODULE", "LORA MODULE", "MODULE"]):
         category = "MODULE"
+
+    # 21. Amplifiers & Comparators (Op-Amps)
+    elif any(k in metadata_text for k in ["OPERATIONAL AMPLIFIER", "OPAMP", "COMPARATOR", "DIFFERENTIAL AMPLIFIER"]):
+        category = "AMP"
+
+    # 22. Power Drivers (Motors, Gates, Solenoids)
+    elif any(k in metadata_text for k in ["MOTOR DRIVER", "GATE DRIVER", "LED DRIVER", "HALF-BRIDGE", "H-BRIDGE", "SOLENOID DRIVER"]):
+        category = "DRIVER"
+
+    # 23. Logic ICs (Gates, Shift Registers, Mux/Demux)
+    elif any(k in metadata_text for k in ["LOGIC GATE", "SHIFT REGISTER", "MULTIPLEXER", "DEMULTIPLEXER", "DECODER", "FLIP-FLOP", "COUNTER"]) or any(p in val_clean for p in ["74HC", "74HCT", "74LVC"]):
+        category = "LOGIC"
+
+    # 24. Dedicated RF ICs (Transceivers, Mixers, Baluns)
+    elif any(k in metadata_text for k in ["RF TRANSCEIVER", "BALUN", "RF AMPLIFIER", "MIXER", "MODULATOR", "DEMODULATOR", "ATTENUATOR"]):
+        category = "RF"
+
+    # 25. Clock, PLL & Timing Generators
+    elif any(k in metadata_text for k in ["CLOCK GENERATOR", "CLOCK BUFFER", "PLL", "FREQUENCY SYNTHESIZER", "REAL-TIME CLOCK", "RTC"]):
+        category = "CLK"
+
+    # 26. EMI Filters & RF Passives
+    elif any(k in metadata_text for k in ["EMI FILTER", "COMMON MODE CHOKE", "BANDPASS FILTER", "LOWPASS FILTER", "LINE FILTER"]):
+        category = "FILT"
+
+    # 27. ADCs and DACs
+    elif any(k in metadata_text for k in ["ANALOG-TO-DIGITAL", "DIGITAL-TO-ANALOG", "ADC", "DAC"]) and not any(k in metadata_text for k in ["MCU", "MICROCONTROLLER"]):
+        category = "ADC"
         
     model = clean_name(val_clean)
     return f"{category}_{model}_{pkg}_{mfr}"
