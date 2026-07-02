@@ -878,8 +878,12 @@ def check_library(paths):
         print("[!] Please address the issues listed above to avoid manufacturing defects.")
     print()
 
-def update_all_components(paths, temp_dir):
-    print(f"\n=== Starting Library-Wide Update ===")
+def update_all_components(paths, temp_dir, targets=None):
+    if targets:
+        print(f"\n=== Starting Targeted Component Update ===")
+    else:
+        print(f"\n=== Starting Library-Wide Update ===")
+        
     if not os.path.exists(paths.sym_individual_dir):
         print("No components registered in the library.")
         return
@@ -889,7 +893,35 @@ def update_all_components(paths, temp_dir):
         print("No components registered in the library.")
         return
         
-    print(f"Found {len(files)} components to check.\n")
+    if targets:
+        resolved_files = []
+        for t in targets:
+            t_clean = t.strip()
+            # Se for codigo LCSC (ex: C2040), tenta achar o nome local correspondente
+            if re.match(r'^C\d+$', t_clean.upper()):
+                resolved = find_name_by_lcsc(t_clean, paths)
+                if resolved:
+                    t_clean = resolved
+                else:
+                    print(f"[!] Warning: No component found with LCSC code '{t_clean}'")
+                    continue
+            
+            if t_clean.endswith(".kicad_sym"):
+                filename = t_clean
+            else:
+                filename = f"{t_clean}.kicad_sym"
+                
+            if filename in files:
+                resolved_files.append(filename)
+            else:
+                print(f"[!] Warning: Component '{t_clean}' is not registered in the library.")
+                
+        files = sorted(resolved_files)
+        if not files:
+            print("[!] No valid components found to update.")
+            return
+            
+    print(f"Found {len(files)} components to check/update.\n")
     updated_count = 0
     
     for filename in files:

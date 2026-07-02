@@ -230,7 +230,8 @@ def main():
         sys.exit(0)
         
     if args.update:
-        update_all_components(paths, TEMP_DIR)
+        targets = args.positional_args if args.positional_args else None
+        update_all_components(paths, TEMP_DIR, targets)
         sys.exit(0)
         
     if args.remove:
