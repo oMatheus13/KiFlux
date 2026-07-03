@@ -445,6 +445,35 @@ def process_footprint(lcsc, comp_name, orig_name, temp_dir, paths):
         content
     )
     
+    # Limpa linhas indesejadas de Edge.Cuts e silkscreen saliente para o USB macho Molex 48037-0001
+    if "48037-0001" in comp_name:
+        # Remove linhas de Edge.Cuts
+        content = re.sub(r'\s*\(fp_line\s+\([^)]*\)\s+\([^)]*\)\s+\(layer\s+"?Edge\.Cuts"?\)[^)]*\)', '', content)
+        # Remove ou encurta linhas de silkscreen salientes (y > 3.95)
+        lines = content.split('\n')
+        new_lines = []
+        for line in lines:
+            if 'F.SilkS' in line and 'fp_line' in line:
+                # Encontra numeros decimais/inteiros com sinais
+                y_matches = re.findall(r'[-+]?\d*\.\d+|\d+', line)
+                if len(y_matches) >= 4:
+                    try:
+                        # y1 esta no index 1 (start X1 Y1), y2 no index 3 (end X2 Y2)
+                        y1 = float(y_matches[1])
+                        y2 = float(y_matches[3])
+                        # Se ambos y forem maiores que 3.95, ignora a linha de silkscreen
+                        if y1 > 3.95 and y2 > 3.95:
+                            continue
+                        # Se cruzar a borda, ajusta o Y para 3.95
+                        if y1 > 3.95:
+                            line = re.sub(r'\(start\s+([-+]?\d*(?:\.\d+)?)\s+([-+]?\d*(?:\.\d+)?)\)', rf'(start \1 3.95)', line)
+                        if y2 > 3.95:
+                            line = re.sub(r'\(end\s+([-+]?\d*(?:\.\d+)?)\s+([-+]?\d*(?:\.\d+)?)\)', rf'(end \1 3.95)', line)
+                    except ValueError:
+                        pass
+            new_lines.append(line)
+        content = '\n'.join(new_lines)
+    
     content = re.sub(r'\s*\(property\s+"LCSC Part"\s+"[^"]+"\s*\)', '', content)
     content = re.sub(r'\s*\(property\s+"JLCPCB Part #"\s+"[^"]+"\s*\)', '', content)
     
