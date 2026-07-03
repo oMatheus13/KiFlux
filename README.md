@@ -95,11 +95,14 @@ Manage your KiCad libraries directly from your terminal using the `kiflux` CLI t
     ```
     *Starts the setup wizard in your terminal. It asks where you want to store your library (defaults to `~/KiCad/KiFlux`) and configures KiCad globally for you. If you run any import command without running this first, KiFlux will automatically ask to initialize.*
 
-*   **Library-Wide Auto Update & Sync:**
+*   **Library Update & Sync:**
     ```bash
+    # Update all components in the library
     kiflux update
+    # Update specific components by LCSC ID or local name
+    kiflux update C2040 MCU_RP2040_QFN56_RPI
     ```
-    *Scans all registered local components, downloads the latest metadata/3D models from the LCSC API, and prompts to rename them if their current name deviates from the latest naming heuristics (perfect for updating old libraries to the new naming rules).*
+    *Downloads the latest metadata and 3D models from the LCSC API for the specified targets (or scans the entire library if no targets are provided), and updates values and descriptions.*
 
 *   **Standard Import (Suggested Naming):**
     ```bash
