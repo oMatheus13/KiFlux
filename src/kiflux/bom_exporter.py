@@ -8,12 +8,10 @@ def extract_symbols_from_sch(sch_path):
         content = f.read()
         
     symbols = []
-    pos = 0
-    while True:
-        symbol_start = content.find("(symbol ", pos)
-        if symbol_start == -1:
-            break
-            
+    # Use regex to find all occurrences of (symbol in the schematic
+    for match in re.finditer(r'\(\s*symbol\b', content):
+        symbol_start = match.start()
+        
         open_brackets = 0
         symbol_end = -1
         for i in range(symbol_start, len(content)):
@@ -28,6 +26,10 @@ def extract_symbols_from_sch(sch_path):
         if symbol_end != -1:
             block = content[symbol_start:symbol_end]
             
+            # Skip library symbols definitions (which start with a double quote)
+            if re.match(r'^\(\s*symbol\s+"', block):
+                continue
+                
             in_bom = True
             if "(in_bom no)" in block:
                 in_bom = False
@@ -50,9 +52,6 @@ def extract_symbols_from_sch(sch_path):
                         "footprint": fp,
                         "lcsc": lcsc
                     })
-            pos = symbol_end
-        else:
-            pos += 1
             
     return symbols
 
