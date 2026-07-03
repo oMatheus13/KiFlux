@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kiflux"
-version = "1.0.0"
+version = "1.1.0"
 description = "KiFlux: Gerenciador inteligente de componentes e gerador de BOM/CPL para KiCad."
 readme = "README.md"
 requires-python = ">=3.8"
