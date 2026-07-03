@@ -445,19 +445,16 @@ def process_footprint(lcsc, comp_name, orig_name, temp_dir, paths):
         content
     )
     
-    content = re.sub(r'\(property "LCSC Part"[^\)]*\)\s*', '', content)
-    content = re.sub(r'\(property "JLCPCB Part #"[^\)]*\)\s*', '', content)
+    content = re.sub(r'\s*\(property\s+"LCSC Part"\s+"[^"]+"\s*\)', '', content)
+    content = re.sub(r'\s*\(property\s+"JLCPCB Part #"\s+"[^"]+"\s*\)', '', content)
     
     properties_block = (
         f'\t(property "LCSC Part" "{lcsc}")\n'
         f'\t(property "JLCPCB Part #" "{lcsc}")'
     )
     
-    content = re.sub(
-        r'(\(fp_text user %R [^\)]*\))',
-        r'\1\n' + properties_block,
-        content
-    )
+    # Insere as propriedades na raiz (linha 2) logo apos a primeira linha de declaracao
+    content = re.sub(r'(\((module|footprint) [^\n]*\n)', r'\1' + properties_block + '\n', content)
     
     temp_3d_dir = os.path.join(temp_dir, "Maker.3dshapes")
     has_temp_3d = False
