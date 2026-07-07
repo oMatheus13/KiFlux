@@ -302,7 +302,11 @@ def process_symbol(lcsc, final_name, temp_dir, paths, jlc_info=None):
         "BUZZ": "LS",
         "BAT": "U",
         "RF": "U",
-        "MEM": "U"
+        "MEM": "U",
+        "FUSE": "F",
+        "F": "F",
+        "POT": "RV",
+        "JOY": "JS"
     }
     target_ref = ref_map.get(prefix_ref, "U")
     
@@ -776,6 +780,35 @@ def rename_component(old_name, new_name, paths):
         content = content.replace(f'(symbol "{old_name}"', f'(symbol "{new_name}"')
         content = re.sub(r'\(symbol "' + re.escape(old_name) + r'(_\d+_\d+)"', r'(symbol "' + new_name + r'\1"', content)
         content = re.sub(r'\(symbol "' + re.escape(old_name) + r'(_\d+)"', r'(symbol "' + new_name + r'\1"', content)
+        
+        # Update Reference property based on new name prefix
+        prefix_ref = new_name.split("_")[0].upper()
+        ref_map = {
+            "R": "R",
+            "C": "C",
+            "IND": "L",
+            "MCU": "U",
+            "REG": "U",
+            "IC": "U",
+            "XTAL": "Y",
+            "CONN": "J",
+            "DIODE": "D",
+            "TRANS": "Q",
+            "BUZZ": "LS",
+            "BAT": "U",
+            "RF": "U",
+            "MEM": "U",
+            "FUSE": "F",
+            "F": "F",
+            "POT": "RV",
+            "JOY": "JS"
+        }
+        target_ref = ref_map.get(prefix_ref, "U")
+        content = re.sub(
+            r'\(\s*property\s+"Reference"\s+"[^"]+"',
+            f'(property "Reference" "{target_ref}"',
+            content
+        )
         
         content = re.sub(
             r'(\(property\s+"Value"\s+)"[^"]+"',

@@ -106,32 +106,35 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     res_value_inline_pattern = r'^\d+[RKM]\d*$'
     ind_value_pattern = r'^\d+(\.\d+)?\s*(N|U|µ|M)+H$'
 
+    is_complex = any(k in metadata_text for k in ["JOYSTICK", "THUMBSTICK", "POTENTIOMETER", "TRIMPOT", "VARIABLE RESISTOR", "THERMISTOR", "ENCODER"])
+    
     is_capacitor = False
     is_resistor = False
     is_inductor = False
 
-    # Primeiro tenta pelo Value direto
-    if re.match(cap_value_pattern, val_clean):
-        is_capacitor = True
-    elif re.match(res_value_pattern, val_clean) or re.match(res_value_inline_pattern, val_clean):
-        is_resistor = True
-    elif re.match(ind_value_pattern, val_clean):
-        is_inductor = True
-    else:
-        # Se o Value for um Part Number poluído, vasculha a descrição/keywords por valores físicos
-        cap_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:PF|NF|UF|µF|MF|F))\b', metadata_text)
-        res_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:R|K|M|OHM|OHMS|Ω|KΩ|MΩ|RΩ))\b', metadata_text)
-        ind_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:NH|UH|µH|MH|H))\b', metadata_text)
-        
-        if cap_desc_match and any(k in metadata_text for k in ["CAPACITOR", "CAPACITORS", "CAP"]):
+    if not is_complex:
+        # Primeiro tenta pelo Value direto
+        if re.match(cap_value_pattern, val_clean):
             is_capacitor = True
-            val_clean = cap_desc_match.group(1)
-        elif res_desc_match and any(k in metadata_text for k in ["RESISTOR", "RESISTORS", "RES"]):
+        elif re.match(res_value_pattern, val_clean) or re.match(res_value_inline_pattern, val_clean):
             is_resistor = True
-            val_clean = res_desc_match.group(1)
-        elif ind_desc_match and any(k in metadata_text for k in ["INDUCTOR", "INDUCTORS", "IND", "CHOKE", "COIL", "BEAD"]):
+        elif re.match(ind_value_pattern, val_clean):
             is_inductor = True
-            val_clean = ind_desc_match.group(1)
+        else:
+            # Se o Value for um Part Number poluído, vasculha a descrição/keywords por valores físicos
+            cap_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:PF|NF|UF|µF|MF|F))\b', metadata_text)
+            res_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:R|K|M|OHM|OHMS|Ω|KΩ|MΩ|RΩ))\b', metadata_text)
+            ind_desc_match = re.search(r'\b(\d+(?:\.\d+)?\s*(?:NH|UH|µH|MH|H))\b', metadata_text)
+            
+            if cap_desc_match and any(k in metadata_text for k in ["CAPACITOR", "CAPACITORS", "CAP"]):
+                is_capacitor = True
+                val_clean = cap_desc_match.group(1)
+            elif res_desc_match and (any(k in metadata_text for k in ["RESISTOR", "RESISTORS"]) or re.search(r'\bRES\b', metadata_text)):
+                is_resistor = True
+                val_clean = res_desc_match.group(1)
+            elif ind_desc_match and any(k in metadata_text for k in ["INDUCTOR", "INDUCTORS", "IND", "CHOKE", "COIL", "BEAD"]):
+                is_inductor = True
+                val_clean = ind_desc_match.group(1)
 
     if is_capacitor:
         val = val_clean
@@ -240,6 +243,10 @@ def generate_standardized_name(value, manufacturer, package, temp_sym_content=No
     # 19. Potentiometers and Trimpots
     elif any(k in metadata_text for k in ["POTENTIOMETER", "TRIMPOT", "VARIABLE RESISTOR"]):
         category = "POT"
+
+    # 19b. Joysticks and Thumbsticks
+    elif any(k in metadata_text for k in ["JOYSTICK", "THUMBSTICK", "GAME CONTROLLER"]) or "RKJXV" in val_clean:
+        category = "JOY"
 
     # 20. Modules (Wireless, Wi-Fi, Bluetooth, LoRa, etc.)
     elif any(k in metadata_text for k in ["WIFI MODULE", "BLUETOOTH MODULE", "RF MODULE", "TRANSCEIVER MODULE", "LORA MODULE", "MODULE"]):
